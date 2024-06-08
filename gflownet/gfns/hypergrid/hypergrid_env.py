@@ -123,8 +123,10 @@ class HyperGridEnv(EnvBase[HyperGridState, HyperGridActionSpace, HyperGridAction
         Returns:
             a new state after applying the action.
         """
+        if state.terminal and not action.terminate:
+            return HyperGridState(coords=state.coords, terminal=True, valid=False)
         if action.terminate:
-            return HyperGridState(coords=state.coords, terminal=False, valid=True)
+            return HyperGridState(coords=state.coords, terminal=False, valid=state.terminal)
         new_coords = tuple(c - s for c, s in zip(state.coords, action.steps))
         valid = all(0 <= c < self.size for c in new_coords)
         return HyperGridState(coords=new_coords, terminal=False, valid=valid)

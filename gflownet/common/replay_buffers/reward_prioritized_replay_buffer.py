@@ -14,7 +14,7 @@ THashableState = TypeVar("THashableState", bound=Hashable)
 
 
 @gin.configurable()
-class RewardPrioritizedReplayBuffer(ReplayBufferBase[TState, THashableState, TAction]):
+class RewardPrioritizedReplayBuffer(ReplayBufferBase[THashableState, TActionSpace, TAction]):
     """
     A replay buffer that stores terminal states and their proxy values. The proxy values are used to weight the
     probability of sampling a backward trajectory starting from a terminal state. The proxy values are multiplied by a
@@ -31,21 +31,21 @@ class RewardPrioritizedReplayBuffer(ReplayBufferBase[TState, THashableState, TAc
 
     def __init__(
         self,
-        sampler: SamplerBase[TState, THashableState, TAction],
+        sampler: SamplerBase[THashableState, TActionSpace, TAction],
         max_size: int = int(1e6),
         temperature: float = 1.0,
     ):
         assert sampler.env.is_reversed, "The environment should be reversed."
         self.sampler = sampler
         self.max_size = int(max_size)
-        self.states_list: List[TState] = []
-        self.states_set: Set[TState] = set()
+        self.states_list: List[THashableState] = []
+        self.states_set: Set[THashableState] = set()
         self.proxy_value_array = np.zeros((self.max_size + 1,), dtype=np.float32)
         self.temperature = temperature
 
     def get_trajectories_iterator(
         self, n_total_trajectories: int, batch_size: int
-    ) -> Iterator[Trajectories]:
+    ) -> Iterator[Trajectories[THashableState, TActionSpace, TAction]]:
         """
         Get an iterator that samples trajectories from the environment. It can be used to sampled trajectories in
             batched manner.
@@ -72,7 +72,7 @@ class RewardPrioritizedReplayBuffer(ReplayBufferBase[TState, THashableState, TAc
         for sampled_states_chunk in chunked(sampled_states, batch_size):
             yield self.sampler.sample_trajectories_from_sources(sampled_states_chunk)
 
-    def add_trajectories(self, trajectories: Trajectories[TState, TActionSpace, TAction]):
+    def add_trajectories(self, trajectories: Trajectories[THashableState, TActionSpace, TAction]):
         """
         Add the terminal states from the trajectories to the replay buffer that are not already in the replay buffer.
 
@@ -99,7 +99,7 @@ class RewardPrioritizedReplayBuffer(ReplayBufferBase[TState, THashableState, TAc
         self.proxy_value_array = state_dict["proxy_value_array"]
         self.states_set = set(self.states_list)
 
-    def _add_state(self, state: TState, proxy_value: float):
+    def _add_state(self, state: THashableState, proxy_value: float):
         self.proxy_value_array[self.size] = proxy_value
         self.states_list.append(state)
         self.states_set.add(state)

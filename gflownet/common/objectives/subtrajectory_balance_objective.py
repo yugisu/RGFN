@@ -11,9 +11,7 @@ from gflownet.api.trajectories import Trajectories
 
 
 @gin.configurable()
-class SubTrajectoryBalanceObjective(
-    ObjectiveBase[TState, TActionSpace, TAction], Generic[TState, TActionSpace, TAction]
-):
+class SubTrajectoryBalanceObjective(ObjectiveBase[TState, TActionSpace, TAction]):
     """
     Sub-trajectory balance objective function for GFN from the paper "Learning GFlowNets from partial episodes for
     improved convergence and stability" (https://arxiv.org/abs/2209.12782).

@@ -96,8 +96,8 @@ class Trajectories(Generic[TState, TActionSpace, TAction]):
     # def get_all_states_flat(self) -> List[TState]:
     #     return [state for states in self._states_list for state in states]
     #
-    # def get_source_states_flat(self) -> List[TState]:
-    #     return [states[0] for states in self._states_list]
+    def get_source_states_flat(self) -> List[TState]:
+        return [states[0] for states in self._states_list]
 
     def get_last_states_flat(self) -> List[TState]:
         """

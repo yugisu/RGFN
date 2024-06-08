@@ -1,6 +1,4 @@
-ForwardHyperGridPolicy.size = %env_size
 ForwardHyperGridPolicy.env = %train_env
-ForwardHyperGridPolicy.n_dimensions = %n_dimensions
 ForwardHyperGridPolicy.hidden_dim = 64
 
 forward_policy/gin.singleton.constructor = @ForwardHyperGridPolicy

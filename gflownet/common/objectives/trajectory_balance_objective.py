@@ -12,9 +12,7 @@ from gflownet.api.trajectories import Trajectories
 
 
 @gin.configurable()
-class TrajectoryBalanceObjective(
-    ObjectiveBase[TState, TActionSpace, TAction], Generic[TState, TActionSpace, TAction]
-):
+class TrajectoryBalanceObjective(ObjectiveBase[TState, TActionSpace, TAction]):
     """
     Trajectory balance objective for GFN from the paper "Trajectory balance: Improved credit assignment in GFlowNets"
     (https://arxiv.org/abs/2201.13259)

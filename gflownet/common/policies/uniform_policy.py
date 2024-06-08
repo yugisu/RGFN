@@ -34,6 +34,9 @@ class IndexedActionSpaceBase(abc.ABC, Generic[TAction]):
     def __len__(self) -> int:
         return len(self.get_possible_actions_indices())
 
+    def is_action_allowed(self, action: TAction) -> bool:
+        return self.get_idx_of_action(action) in self.get_possible_actions_indices()
+
 
 TIndexedActionSpace = TypeVar("TIndexedActionSpace", bound=IndexedActionSpaceBase)
 

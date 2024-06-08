@@ -24,14 +24,14 @@ class ForwardHyperGridPolicy(
     A hypergrid policy that samples actions from the action space using a learned MLP.
     """
 
-    def __init__(self, size: int, n_dimensions: int, env: HyperGridEnv, hidden_dim: int = 32):
+    def __init__(self, env: HyperGridEnv, hidden_dim: int = 32):
         super().__init__()
-        self.size = size
-        self.n_dimensions = n_dimensions
+        self.size = env.size
+        self.n_dimensions = env.n_dimensions
         self.num_actions = env.num_actions
         self.hidden_dim = hidden_dim
         self.score_mlp = nn.Sequential(
-            nn.Linear(n_dimensions, hidden_dim),
+            nn.Linear(self.n_dimensions, hidden_dim),
             nn.GELU(),
             nn.Linear(hidden_dim, self.num_actions),
         )
