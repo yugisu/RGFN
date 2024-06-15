@@ -1,29 +1,27 @@
-import math
-import random
-from typing import Dict, List
-
 import gin
-import numpy as np
 
-from gflownet.api.env_base import TAction, TActionSpace, TState
 from gflownet.api.sampler_base import SamplerBase
 from gflownet.api.trajectories import Trajectories
-from gflownet.common.replay_buffers.reward_prioritized_replay_buffer import (
-    RewardPrioritizedReplayBuffer,
-)
 from gflownet.gfns.retro.api.data_structures import Reaction
 from gflownet.gfns.retro.api.retro_api import (
-    EarlyTerminalRetroState,
     RetroAction,
     RetroActionSpace,
     RetroState,
     TerminalRetroState,
 )
 from gflownet.gfns.retro.api.retro_data_factory import RetroDataFactory
+from gflownet.shared.replay_buffers.reward_prioritized_replay_buffer import (
+    RewardPrioritizedReplayBuffer,
+)
 
 
 @gin.configurable()
 class RetroReplayBuffer(RewardPrioritizedReplayBuffer[RetroState, RetroActionSpace, RetroAction]):
+    """
+    Reward prioritized replay buffer for the retro environment that additionally filter out reactions that are
+    in the dataset.
+    """
+
     def __init__(
         self,
         sampler: SamplerBase[RetroState, RetroActionSpace, RetroAction],

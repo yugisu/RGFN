@@ -3,7 +3,7 @@ import torch
 from gflownet import RandomSampler, UniformPolicy
 from gflownet.api.env_base import EnvBase, TAction, TState
 from gflownet.api.policy_base import PolicyBase
-from gflownet.common.policies.uniform_policy import TIndexedActionSpace
+from gflownet.shared.policies.uniform_policy import TIndexedActionSpace
 from gflownet.utils.helpers import seed_everything
 
 
@@ -12,6 +12,14 @@ def helper__test_policy__samples_only_allowed_actions(
     env: EnvBase[TState, TIndexedActionSpace, TAction],
     n_trajectories: int,
 ):
+    """
+    A helper function that tests whether the policy samples only allowed actions.
+
+    Args:
+        policy: a policy to be tested
+        env: an environment corresponding to the policy
+        n_trajectories: number of trajectories to sample
+    """
     seed_everything(42)
     sampler = RandomSampler(
         policy=policy,
@@ -38,6 +46,14 @@ def helper__test_policy__returns_sensible_log_probs(
     env: EnvBase[TState, TIndexedActionSpace, TAction],
     n_trajectories: int,
 ):
+    """
+    A helper function that tests whether the policy returns sensible log probabilities for the sampled trajectories.
+
+    Args:
+        policy: a policy to be tested
+        env: an environment corresponding to the policy
+        n_trajectories: number of trajectories to sample
+    """
     seed_everything(42)
     sampler = RandomSampler(
         policy=UniformPolicy(),

@@ -27,7 +27,7 @@ class ObjectiveOutput:
 
 class ObjectiveBase(nn.Module, ABC, Generic[TState, TActionSpace, TAction]):
     """
-    A class representing the base class for GFN objectives. An objective is a function that takes a batch of
+    A base class for GFN objectives. An objective is a function that takes a batch of
         trajectories and computes the loss (objective) and possibly some metrics.
 
     Type parameters:

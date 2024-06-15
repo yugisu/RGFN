@@ -3,7 +3,7 @@ from typing import List
 
 import pytest
 
-from gflownet.common.policies.uniform_policy import (
+from gflownet.shared.policies.uniform_policy import (
     IndexedActionSpaceBase,
     UniformPolicy,
 )

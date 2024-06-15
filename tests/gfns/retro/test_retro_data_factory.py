@@ -15,13 +15,13 @@ from .fixtures import (
 )
 
 
-def test__retro_data_factory_get_products(retro_data_factory: RetroDataFactory):
+def test__retro_data_factory__get_products(retro_data_factory: RetroDataFactory):
     products = retro_data_factory.get_products()
     for product in products[1:]:
         assert product != products[0]
 
 
-def test__retro_data_factory_is_deterministic(
+def test__retro_data_factory__is_deterministic(
     path_to_product_patterns: Path, path_to_reactant_patterns: Path, path_to_truncated_train: Path
 ):
     data_factory_1 = RetroDataFactory(
@@ -38,25 +38,25 @@ def test__retro_data_factory_is_deterministic(
     assert data_factory_1.get_reactant_patterns() == data_factory_2.get_reactant_patterns()
 
 
-def test__retro_data_factory_get_reactant_patterns(retro_data_factory: RetroDataFactory):
+def test__retro_data_factory__get_reactant_patterns(retro_data_factory: RetroDataFactory):
     patterns = retro_data_factory.get_reactant_patterns()
     for pattern in patterns[1:]:
         assert pattern != patterns[0]
 
 
-def test__retro_data_factory_get_product_patterns(retro_data_factory: RetroDataFactory):
+def test__retro_data_factory__get_product_patterns(retro_data_factory: RetroDataFactory):
     patterns = retro_data_factory.get_product_patterns()
     for pattern in patterns[1:]:
         assert pattern != patterns[0]
 
 
-def test__retro_data_factory_get_terminal_states(retro_data_factory: RetroDataFactory):
+def test__retro_data_factory__get_terminal_states(retro_data_factory: RetroDataFactory):
     terminal_states = retro_data_factory.get_terminal_states()
     for terminal_state in terminal_states[1:]:
         assert terminal_state != terminal_states[0]
 
 
-def test__retro_data_factory_get_terminal_states__sensible(
+def test__retro_data_factory__get_terminal_states__sensible(
     retro_data_factory: RetroDataFactory, retro_env: RetroEnv
 ):
     terminal_states = retro_data_factory.get_terminal_states()

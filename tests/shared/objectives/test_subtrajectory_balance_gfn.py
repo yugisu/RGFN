@@ -9,7 +9,7 @@ from gflownet.api.policy_base import PolicyBase
 from gflownet.api.proxy_base import ProxyBase, ProxyOutput
 from gflownet.api.reward import Reward
 from gflownet.api.trajectories import Trajectories
-from gflownet.common.objectives import SubTrajectoryBalanceObjective
+from gflownet.shared.objectives import SubTrajectoryBalanceObjective
 
 
 class MockProxy(ProxyBase[int]):

@@ -61,9 +61,11 @@ class RewardPrioritizedReplayBuffer(ReplayBufferBase[THashableState, TActionSpac
 
         if n_total_trajectories == 0:
             yield Trajectories()
+            return
 
         logits = torch.tensor(self.proxy_value_array[: self.size] * self.temperature)
         probs = torch.nn.functional.softmax(logits, dim=0).numpy()
+
         sampled_indices = np.random.choice(
             self.size, size=n_total_trajectories, replace=False, p=probs
         )

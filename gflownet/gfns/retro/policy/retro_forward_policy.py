@@ -1,7 +1,6 @@
-from typing import Any, Callable, Dict, Iterable, List, Sequence, Tuple, Type, Union
+from typing import Any, Callable, Dict, Iterable, List, Sequence, Tuple, Type
 
 import gin
-import numpy as np
 import torch
 from dgllife.utils import WeaveAtomFeaturizer
 from torch import nn
@@ -9,25 +8,19 @@ from torch.distributions import Categorical
 from torch_geometric.utils import to_dense_batch
 from torchtyping import TensorType
 
-from gflownet.api.env_base import TAction, TActionSpace, TState
 from gflownet.api.policy_base import PolicyBase
 from gflownet.gfns.retro.api.retro_api import (
     EarlyTerminalRetroState,
-    EarlyTerminateRetroAction,
     EarlyTerminateRetroActionSpace,
-    FirstPhaseRetroAction,
     FirstPhaseRetroActionSpace,
     FirstPhaseRetroState,
     MappingTuple,
     Molecule,
-    Pattern,
     RetroAction,
     RetroActionSpace,
     RetroState,
-    SecondPhaseRetroAction,
     SecondPhaseRetroActionSpace,
     SecondPhaseRetroState,
-    ThirdPhaseRetroAction,
     ThirdPhaseRetroActionSpace,
     ThirdPhaseRetroState,
 )
@@ -38,12 +31,17 @@ from gflownet.gfns.retro.policy.featurizers import (
     RandomWalkPEFeaturizer,
     ReactantNodeFeaturizer,
 )
-from gflownet.gfns.retro.policy.gnns import EmbeddingGNN, GlobalReactivityAttention
+from gflownet.gfns.retro.policy.gnns import EmbeddingGNN
 from gflownet.utils.helpers import to_indices
 
 
 @gin.configurable()
 class RetroForwardPolicy(PolicyBase[RetroState, RetroActionSpace, RetroAction], nn.Module):
+    """
+    The RetroGFN forward policy. It provides distinct sub-policies for each phase of the RetroGFN's template
+    composition process. The policies share the product embedding backbone.
+    """
+
     def __init__(
         self,
         data_factory: RetroDataFactory,
@@ -54,8 +52,20 @@ class RetroForwardPolicy(PolicyBase[RetroState, RetroActionSpace, RetroAction], 
         initial_logZ: float = 0.0,
         temperature: float = 1.0,
         random_walk_steps: int = 16,
-        z_dim: int = 1,
     ):
+        """
+        Initialize the RetroForwardPolicy.
+
+        Args:
+            data_factory: a data factory that provides the data for the policy.
+            hidden_dim: hidden dimension.
+            num_gnn_layers: number of GNN layers used in the embedding.
+            num_gnn_layers_third_phase: number of GNN layers used in the third phase for the reactant pattern embeddings.
+            num_attention_heads: number of attention heads.
+            initial_logZ: initial value of the log flow.
+            temperature: the temperature used in the softmax in first and second phases.
+            random_walk_steps: the number of random walk steps used in the PE featurizer.
+        """
         super().__init__()
         self.num_reactants_patterns = len(data_factory.get_reactant_patterns())
         self.num_product_patterns = len(data_factory.get_product_patterns())
@@ -118,7 +128,7 @@ class RetroForwardPolicy(PolicyBase[RetroState, RetroActionSpace, RetroAction], 
         # log flow
         self.product_to_log_flow_idx: Dict[Molecule, int] = {}
         product_logZ = torch.empty(
-            (len(data_factory.get_products()) + 10_000, z_dim), dtype=torch.float
+            (len(data_factory.get_products()) + 10_000, 1), dtype=torch.float
         ).fill_(initial_logZ)
         product_logZ.requires_grad = True
         self.product_logZ = nn.Parameter(product_logZ)
@@ -136,6 +146,15 @@ class RetroForwardPolicy(PolicyBase[RetroState, RetroActionSpace, RetroAction], 
     def _embed_products(
         self, products: List[Molecule]
     ) -> Tuple[TensorType[float], Dict[Molecule, int]]:
+        """
+        A helper function to embed the products.
+        Args:
+            products: the products to embed of the length N.
+
+        Returns:
+            - the product embeddings tensor of the shape (N, max_num_nodes, hidden_dim)
+            - the mapping from the products to their indices in the product embedding tensor
+        """
         all_products = set(products)
         product_to_idx = {product: idx for idx, product in enumerate(all_products)}
         product_embedding = self.product_embedding.forward(list(all_products))
@@ -182,6 +201,16 @@ class RetroForwardPolicy(PolicyBase[RetroState, RetroActionSpace, RetroAction], 
     def _sample_actions_from_log_probs(
         self, log_probs: TensorType[float], action_spaces: List[RetroActionSpace]
     ) -> List[RetroAction]:
+        """
+        A helper function to sample actions from the log probabilities.
+
+        Args:
+            log_probs: log probabilities of the shape (N, max_num_actions)
+            action_spaces: the list of action spaces of the length N.
+
+        Returns:
+            the list of sampled actions.
+        """
         action_indices = Categorical(probs=torch.exp(log_probs)).sample()
         return [
             action_space.get_action_at_idx(idx.item())
@@ -241,6 +270,17 @@ class RetroForwardPolicy(PolicyBase[RetroState, RetroActionSpace, RetroAction], 
         action_spaces: Sequence[RetroActionSpace],
         actions: Sequence[RetroAction],
     ) -> TensorType[float]:
+        """
+        A helper function to select the log probabilities of the actions.
+
+        Args:
+            log_probs: log probabilities of the shape (N, max_num_actions)
+            action_spaces: the list of action spaces of the length N.
+            actions: the list of chosen actions of the length N.
+
+        Returns:
+            the log probabilities of the chosen actions of the shape (N,).
+        """
         action_indices = [
             action_space.get_idx_of_action(action)  # type: ignore
             for action_space, action in zip(action_spaces, actions)
@@ -425,6 +465,15 @@ class RetroForwardPolicy(PolicyBase[RetroState, RetroActionSpace, RetroAction], 
         return log_flow.sum(-1)
 
     def _get_log_flow_idx(self, product: Molecule):
+        """
+        Get the index of the product in the log flow tensor.
+
+        Args:
+            product: the product molecule.
+
+        Returns:
+            the index of the product in the log flow tensor.
+        """
         if product not in self.product_to_log_flow_idx:
             self.product_to_log_flow_idx[product] = len(self.product_to_log_flow_idx)
         return self.product_to_log_flow_idx[product]

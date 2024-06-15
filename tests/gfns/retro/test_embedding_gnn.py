@@ -9,7 +9,7 @@ from gflownet.gfns.retro.policy.gnns import EmbeddingGNN
 
 
 @pytest.mark.parametrize("smiles_list", [["CCN"], ["CCN", "CCO"], ["CCN", "CCO", "CCOC"]])
-def test_embedding_gnn(smiles_list: List[str]):
+def test__embedding_gnn__returns_different_embeddings(smiles_list: List[str]):
     gnn = EmbeddingGNN(
         hidden_dim=32,
         num_attention_heads=4,

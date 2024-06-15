@@ -1,12 +1,22 @@
 from gflownet import RandomSampler, UniformPolicy
 from gflownet.api.env_base import EnvBase, TAction, TState
-from gflownet.common.policies.uniform_policy import TIndexedActionSpace
+from gflownet.shared.policies.uniform_policy import TIndexedActionSpace
 from gflownet.utils.helpers import seed_everything
 
 
 def helper__test_env__forward_backward_consistency(
     env: EnvBase[TState, TIndexedActionSpace, TAction], n_trajectories: int
 ):
+    """
+    A helper function that tests whether the forward pass of the environment can be obtained by applying the backward
+    pass to the last states of the trajectories.
+    Args:
+        env: environment to be tested
+        n_trajectories: number of trajectories to sample
+
+    Returns:
+        None
+    """
     seed_everything(42)
     sampler = RandomSampler(
         policy=UniformPolicy(),
@@ -37,6 +47,19 @@ def helper__test_env__backward_forward_consistency(
     n_trajectories: int,
     sample_from_env: bool = True,
 ):
+    """
+    A helper function that tests whether the backward pass of the environment can be obtained by applying the forward
+    pass to the source states of the obtained trajectories.
+    Args:
+        env: environment to be tested
+        n_trajectories: number of trajectories to sample
+        sample_from_env: whether to sample trajectories directly from the reversed env (assumes that the env has can
+        implements `sample_from_terminal_states` method) or sample from the original env and then sample from the
+        reversed env using the last states of the obtained trajectories.
+
+    Returns:
+        None
+    """
     seed_everything(42)
 
     if sample_from_env:

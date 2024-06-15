@@ -1,7 +1,6 @@
-import abc
 from copy import copy
 from pathlib import Path
-from typing import FrozenSet, List, Union
+from typing import List, Union
 
 import gin
 import pandas as pd
@@ -22,22 +21,40 @@ from gflownet.gfns.retro.retro_utils import get_backward_template
 
 @gin.configurable()
 class RetroDataFactory:
+    """
+    A factory that provides data for the RetroGFN training and inference.
+    """
+
     def __init__(
         self,
         split_path: Union[Path, str, None],
         product_patterns_path: Union[Path, str],
         reactant_patterns_path: Union[Path, str],
         additional_source_file: Union[Path, str, None] = None,
+        root_dir: str | Path = ".",
     ):
-        self.split_df = pd.read_csv(split_path, sep=";") if split_path is not None else None
+        """
+        Initialize the RetroDataFactory.
+
+        Args:
+            split_path: a path to the reactions file.
+            product_patterns_path: a path to the product patterns file.
+            reactant_patterns_path: a path to the reactant patterns file.
+            additional_source_file: an additional file with the source molecules.
+            root_dir: the root RetroGFN repository.
+        """
+        root_dir = Path(root_dir)
+        self.split_df = (
+            pd.read_csv(root_dir / split_path, sep=";") if split_path is not None else None
+        )
         self._products_smiles = (
             self.split_df["product"].tolist() if self.split_df is not None else []
         )
         if additional_source_file is not None:
-            additional_source_df = pd.read_csv(additional_source_file)
+            additional_source_df = pd.read_csv(root_dir / additional_source_file)
             self._products_smiles += additional_source_df["smiles"].tolist()
-        self.product_pattern_df = pd.read_csv(product_patterns_path)
-        self.reactant_pattern_df = pd.read_csv(reactant_patterns_path)
+        self.product_pattern_df = pd.read_csv(root_dir / product_patterns_path)
+        self.reactant_pattern_df = pd.read_csv(root_dir / reactant_patterns_path)
         self._products: List[Molecule] | None = None
         self._source_states: List[FirstPhaseRetroState] | None = None
         self._product_patterns: List[Pattern] | None = None

@@ -8,7 +8,8 @@ from gflownet.api.trajectories import Trajectories
 
 class ReplayBufferBase(ABC, Generic[TState, TActionSpace, TAction]):
     """
-    A base class for replay buffers. A replay buffer stores terminal states or trajectories and can sample them.
+    A base class for replay buffers. A replay buffer stores terminal states or trajectories and can sample them
+    in backward direction using the provided sampler.
 
     Type parameters:
         TState: The type of the states.

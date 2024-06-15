@@ -1,8 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Any, FrozenSet, List, Tuple
 
-from gflownet.api.env_base import TAction
-from gflownet.common.policies.uniform_policy import IndexedActionSpaceBase
+from gflownet.shared.policies.uniform_policy import IndexedActionSpaceBase
 
 from .data_structures import (
     Bag,
@@ -16,16 +15,31 @@ from .data_structures import (
 
 @dataclass(frozen=True)
 class FirstPhaseRetroState:
+    """
+    The state of the first phase of the (single-step) retrosynthesis process.
+
+    Attributes:
+        product: an initial product to be retrosynthesized.
+    """
+
     product: Molecule
 
 
 @dataclass(frozen=True)
 class FirstPhaseRetroAction:
+    """
+    The action of the first phase of the retrosynthesis process.
+
+    Attributes:
+        subgraph_idx: the indices of the subgraph in the product molecule that are matched to the product pattern.
+        product_pattern: the product pattern matched to the subgraph.
+    """
+
     subgraph_idx: Tuple[int, ...]
     product_pattern: Pattern
 
     def __post_init__(self):
-        if self.product_pattern.symmetric():
+        if self.product_pattern.is_symmetric():
             if self.subgraph_idx[0] > self.subgraph_idx[-1]:
                 subgraph_idx = tuple(reversed(self.subgraph_idx))
                 object.__setattr__(self, "subgraph_idx", subgraph_idx)
@@ -33,10 +47,11 @@ class FirstPhaseRetroAction:
 
 @dataclass(frozen=True)
 class FirstPhaseRetroActionSpace(IndexedActionSpaceBase[FirstPhaseRetroAction]):
-    possible_actions: FrozenSet[FirstPhaseRetroAction]
+    """
+    The action space of the first phase of the retrosynthesis process.
+    """
 
-    def num_unique_subgraphs(self) -> int:
-        return len({tuple(sorted(action.subgraph_idx)) for action in self.possible_actions})
+    possible_actions: FrozenSet[FirstPhaseRetroAction]
 
     def get_action_at_idx(self, idx: int) -> FirstPhaseRetroAction:
         return list(self.possible_actions)[idx]
@@ -50,6 +65,16 @@ class FirstPhaseRetroActionSpace(IndexedActionSpaceBase[FirstPhaseRetroAction]):
 
 @dataclass(frozen=True)
 class SecondPhaseRetroState:
+    """
+    The state of the second phase of the retrosynthesis process.
+
+    Attributes:
+        product: the initial product to be retrosynthesized.
+        subgraph_idx: the indices of the subgraph in the product molecule that are matched to the product pattern.
+        product_pattern: the product pattern matched to the subgraph.
+        reactant_patterns: the bag of reactant patterns that will be used to compose the final backward template.
+    """
+
     product: Molecule
     subgraph_idx: Tuple[int, ...]
     product_pattern: Pattern
@@ -58,11 +83,22 @@ class SecondPhaseRetroState:
 
 @dataclass(frozen=True)
 class SecondPhaseRetroAction:
+    """
+    The action of the second phase of the retrosynthesis process.
+
+    Attributes:
+        reactant_pattern_idx: the index of the reactant pattern chosen.
+    """
+
     reactant_pattern_idx: int
 
 
 @dataclass(frozen=True)
 class SecondPhaseRetroActionSpace(IndexedActionSpaceBase[SecondPhaseRetroAction]):
+    """
+    The action space of the second phase of the retrosynthesis process.
+    """
+
     actions_mask: List[bool]
 
     def get_action_at_idx(self, idx: int) -> SecondPhaseRetroAction:
@@ -77,6 +113,17 @@ class SecondPhaseRetroActionSpace(IndexedActionSpaceBase[SecondPhaseRetroAction]
 
 @dataclass(frozen=True)
 class ThirdPhaseRetroState:
+    """
+    The state of the third phase of the retrosynthesis process.
+
+    Attributes:
+        product: the initial product to be retrosynthesized.
+        subgraph_idx: the indices of the subgraph in the product molecule that are matched to the product pattern.
+        product_pattern: the product pattern matched to the subgraph.
+        reactant_patterns: the list of reactant patterns that will be used to compose the final backward template.
+        atom_mapping: the atom mapping between the product and reactants patterns.
+    """
+
     product: Molecule
     subgraph_idx: Tuple[int, ...]
     product_pattern: Pattern
@@ -86,11 +133,22 @@ class ThirdPhaseRetroState:
 
 @dataclass(frozen=True)
 class ThirdPhaseRetroAction:
+    """
+    The action of the third phase of the retrosynthesis process.
+
+    Attributes:
+        mapping: the atom mapping between a single atom of product and reactants patterns.
+    """
+
     mapping: MappingTuple
 
 
 @dataclass(frozen=True)
 class ThirdPhaseRetroActionSpace(IndexedActionSpaceBase[ThirdPhaseRetroAction]):
+    """
+    The action space of the third phase of the retrosynthesis process.
+    """
+
     possible_actions: FrozenSet[MappingTuple]
 
     def get_action_at_idx(self, idx: int) -> ThirdPhaseRetroAction:
@@ -105,11 +163,19 @@ class ThirdPhaseRetroActionSpace(IndexedActionSpaceBase[ThirdPhaseRetroAction]):
 
 @dataclass(frozen=True)
 class EarlyTerminateRetroAction:
+    """
+    The action of the early termination of the retrosynthesis process.
+    """
+
     pass
 
 
 @dataclass(frozen=True)
 class EarlyTerminateRetroActionSpace(IndexedActionSpaceBase[EarlyTerminateRetroAction]):
+    """
+    The action space of the early termination of the retrosynthesis process.
+    """
+
     def get_action_at_idx(self, idx: int) -> EarlyTerminateRetroAction:
         return EarlyTerminateRetroAction()
 
@@ -122,11 +188,33 @@ class EarlyTerminateRetroActionSpace(IndexedActionSpaceBase[EarlyTerminateRetroA
 
 @dataclass(frozen=True)
 class EarlyTerminalRetroState:
+    """
+    The state of the early termination of the retrosynthesis process. It should never occur during the training,
+    but may be useful during the inference.
+
+    Attributes:
+        previous_state: the state of the retrosynthesis process that led to the early termination.
+    """
+
     previous_state: Any
 
 
 @dataclass(frozen=True)
 class TerminalRetroState:
+    """
+    The terminal state of the retrosynthesis process.
+
+    Attributes:
+        product: the initial product to be retrosynthesized.
+        reactants: the reactants that were used to synthesize the product.
+        subgraph_idx: the indices of the subgraph in the product molecule that are matched to the product pattern.
+        product_pattern: the product pattern matched to the subgraph.
+        reactant_patterns: the list of reactant patterns that were used to compose the final backward template.
+        atom_mapping: the atom mapping between the product and reactants patterns.
+        template: the backward template that was used to synthesize the product.
+        valid: whether the retrosynthesis process was successful.
+    """
+
     product: Molecule = field(hash=True, compare=True)
     reactants: Bag[Molecule] = field(hash=True, compare=True)
     subgraph_idx: Tuple[int, ...] = field(hash=False, compare=False)

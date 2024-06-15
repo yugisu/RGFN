@@ -21,7 +21,7 @@ class ProxyOutput(Generic[TState]):
 
 class ProxyBase(Generic[TState], ABC):
     """
-    A class representing the base class for proxies. A proxy is a function that takes a batch of states and computes
+    A base class for proxies. A proxy is a function that takes a batch of states and computes
         values that are then used to compute the GFN reward.
 
     Type parameters:

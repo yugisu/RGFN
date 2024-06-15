@@ -8,7 +8,8 @@ from gflownet.api.env_base import TAction, TActionSpace, TState
 
 class PolicyBase(Generic[TState, TActionSpace, TAction], ABC):
     """
-    A case Policy class. A policy can sample actions and compute the corresponding log probabilities and log flows.
+    A base class for policies. Given the current batch of states, a policy samples action. It also computes
+    the log probabilities when chosen actions and following states are provided.
 
     Type parameters:
         TState: The type of the states.

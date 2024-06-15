@@ -2,12 +2,15 @@ from pathlib import Path
 
 import pytest
 
+from gflownet import ROOT_DIR
 from gflownet.gfns.retro import (
     RetroDataFactory,
     RetroDatasetProxy,
     RetroEnv,
     RetroForwardPolicy,
 )
+from gflownet.gfns.retro.proxies.retro_chemformer_proxy import RetroChemformerProxy
+from gflownet.gfns.retro.proxies.retro_rfm_proxy import RetroRFMProxy
 
 
 @pytest.fixture(scope="module")
@@ -51,3 +54,25 @@ def retro_forward_policy(retro_data_factory: RetroDataFactory) -> RetroForwardPo
 @pytest.fixture(scope="module")
 def retro_dataset_proxy(retro_data_factory: RetroDataFactory):
     return RetroDatasetProxy(data_factory=retro_data_factory)
+
+
+@pytest.fixture(scope="module")
+def chemformer_forward_path() -> Path:
+    return ROOT_DIR / "checkpoints" / "feasibility_proxies" / "chemformer" / "eval"
+
+
+@pytest.fixture(scope="module")
+def retro_chemformer_proxy(retro_data_factory: RetroDataFactory, chemformer_forward_path: Path):
+    return RetroChemformerProxy(
+        data_factory=retro_data_factory, checkpoint_path=chemformer_forward_path
+    )
+
+
+@pytest.fixture(scope="module")
+def rfm_train_checkpoint_path() -> Path:
+    return ROOT_DIR / "checkpoints" / "feasibility_proxies" / "rfm" / "eval" / "best_reaction.pt"
+
+
+@pytest.fixture(scope="module")
+def retro_rfm_proxy(retro_data_factory: RetroDataFactory, rfm_train_checkpoint_path: Path):
+    return RetroRFMProxy(data_factory=retro_data_factory, checkpoint_path=rfm_train_checkpoint_path)

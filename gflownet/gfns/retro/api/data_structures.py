@@ -27,6 +27,10 @@ THashable = TypeVar("THashable", bound=Hashable)
 
 
 class Bag(Collection, Generic[THashable]):
+    """
+    A bag (or a multiset) is a collection of elements where duplicates are allowed. It is hashable.
+    """
+
     def __init__(self, values: Iterable[THashable] = ()) -> None:
         self._container: Dict[THashable, int] = {}
         self._count = 0
@@ -35,6 +39,15 @@ class Bag(Collection, Generic[THashable]):
 
     @classmethod
     def from_bags(cls, bags: Iterable["Bag[THashable]"]) -> "Bag[THashable]":
+        """
+        Create a new bag from a collection of bags.
+
+        Args:
+            bags: a collection of bags
+
+        Returns:
+            A new bag containing all elements from the input bags.
+        """
         container: Dict[THashable, int] = {}
         total_count = 0
         for bag in bags:
@@ -47,15 +60,42 @@ class Bag(Collection, Generic[THashable]):
         return new_bag
 
     def is_subset(self, other: "Bag[THashable]") -> bool:
+        """
+        Check if this bag is a subset of another bag.
+
+        Args:
+            other: another bag
+
+        Returns:
+            True if this bag is a subset of another bag, False otherwise.
+        """
         for element, count in self._container.items():
             if count > other._container.get(element, 0):
                 return False
         return True
 
     def is_superset(self, other: "Bag[THashable]") -> bool:
+        """
+        Check if this bag is a superset of another bag.
+
+        Args:
+            other: another bag
+
+        Returns:
+            True if this bag is a superset of another bag, False otherwise.
+        """
         return other.is_subset(self)
 
     def _add(self, element: THashable) -> None:
+        """
+        Add an element to the bag.
+
+        Args:
+            element: an element to add
+
+        Returns:
+            None
+        """
         self._container[element] = self._container.get(element, 0) + 1
         self._count += 1
 
@@ -87,6 +127,10 @@ class Bag(Collection, Generic[THashable]):
 
 
 class SortedList(Collection, Generic[TComparable]):
+    """
+    A sorted list is a collection of elements that is always sorted. It is hashable and immutable.
+    """
+
     def __init__(self, values: Iterable[TComparable] = ()) -> None:
         self._values = tuple(sorted(values))
 
@@ -117,6 +161,10 @@ class SortedList(Collection, Generic[TComparable]):
 
 @dataclass(frozen=True)
 class Molecule:
+    """
+    A molecule data structure. It is hashable and immutable. The SMILES string is canonicalized.
+    """
+
     smiles: str = field(hash=True, compare=True)
     rdkit_mol: Chem.Mol = field(init=False, repr=False, compare=False)
 
@@ -137,6 +185,19 @@ class Molecule:
 
 @dataclass(frozen=True, order=True)
 class Pattern:
+    """
+    A pattern representing a SMARTS expression. data structure. It is hashable and immutable.
+    The SMARTS string is canonicalized.
+
+    Attributes:
+        smarts: a SMARTS string
+        rdkit_mol: an RDKit molecule object
+        mappable_symbols: a bag of symbols of atoms that were mapped in the pattern in the original reaction
+            template.
+        idx: an index of the pattern. Used for indexing in a list of patterns.
+        symbol_to_indices: a mapping from mappable symbols to indices of atoms in the pattern.
+    """
+
     smarts: str = field(hash=True, compare=True)
     rdkit_mol: Chem.Mol = field(init=False, repr=False, compare=False)
     mappable_symbols: Bag[str] = field(init=False, repr=False, compare=False)
@@ -149,7 +210,7 @@ class Pattern:
         else:
             return self.idx
 
-    def symmetric(self) -> bool:
+    def is_symmetric(self) -> bool:
         symbol_list = [
             get_symbol(atom, include_aromaticity=True) for atom in self.rdkit_mol.GetAtoms()
         ]
@@ -178,6 +239,18 @@ class Pattern:
 
 @dataclass(frozen=True, order=True)
 class ReactantPattern(Pattern):
+    """
+    A reactant pattern that represent the reactant side of a reaction template. It is hashable and immutable.
+    A backward template constructed from product Pattern and reactants ReactantPatterns describes the
+    replacement of atoms in the product Pattern with atoms in the reactants ReactantPatterns, and the
+    change in charge, hydrogen count, and chiral type of the atoms that are mapped.
+
+    Attributes:
+        charge_diffs: a change in the charge of atoms in the reactant with respect to the product.
+        hydrogen_diffs: a change in the hydrogen count of atoms in the reactant with respect to the product.
+        chiral_diffs: a change in the chiral type of atoms in the reactant with respect to the product.
+    """
+
     charge_diffs: Tuple[int, ...] = field(hash=True, compare=True, default=())
     hydrogen_diffs: Tuple[int, ...] = field(hash=True, compare=True, default=())
     chiral_diffs: Tuple[int, ...] = field(hash=True, compare=True, default=())
@@ -200,18 +273,29 @@ class ReactantPattern(Pattern):
 
 @dataclass(frozen=True)
 class Reaction:
+    """
+    A reaction data structure. It is hashable and immutable.
+    """
+
     product: Molecule
     reactants: Bag[Molecule]
 
 
 @dataclass(frozen=True)
 class MappingTuple:
+    """
+    A tuple representing a mapping between an atom in a product molecule and an atom in a reactant molecule.
+    """
+
     product_node: int
     reactant: int
     reactant_node: int
 
 
 def get_symbol(atom: Chem.Atom, include_aromaticity: bool = False) -> str:
+    """
+    Get a symbol of an atom. If include_aromaticity is True, the symbol is lowercased if the atom is aromatic.
+    """
     symbol = atom.GetSymbol()
     if include_aromaticity and atom.GetIsAromatic():
         symbol = symbol.lower()

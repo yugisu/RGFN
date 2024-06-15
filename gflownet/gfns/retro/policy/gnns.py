@@ -1,6 +1,10 @@
+"""
+The code is partially adapted from LocalRetro repository (https://github.com/kaist-amsg/LocalRetro).
+"""
+
 import math
 from functools import partial
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Tuple, Union
 
 import dgl
 import torch
@@ -11,7 +15,7 @@ from dgllife.utils import (
     WeaveAtomFeaturizer,
     mol_to_bigraph,
 )
-from torch import nn
+from torch import Tensor, nn
 from torch_geometric.utils import to_dense_batch
 from torchtyping import TensorType
 
@@ -21,7 +25,11 @@ from gflownet.utils.helpers import to_indices
 
 
 class MultiHeadAttention(nn.Module):
-    def __init__(self, heads, d_model, dropout=0.1):
+    """
+    Multi-head attention module.
+    """
+
+    def __init__(self, heads: int, d_model: int, dropout: float = 0.1):
         super().__init__()
         self.d_model = d_model
         self.d_k = d_model // heads
@@ -38,7 +46,12 @@ class MultiHeadAttention(nn.Module):
             if p.dim() > 1:
                 nn.init.xavier_uniform_(p)
 
-    def attention(self, q, k, v, mask=None):
+    def attention(
+        self, q: Tensor, k: Tensor, v: Tensor, mask: Tensor | None = None
+    ) -> Tuple[Tensor, Tensor]:
+        """
+        Attention mechanism.
+        """
         scores = torch.matmul(q, k.transpose(-2, -1)) / math.sqrt(self.d_k)
         if mask is not None:
             mask = mask.unsqueeze(1).repeat(1, mask.size(-1), 1)
@@ -49,7 +62,7 @@ class MultiHeadAttention(nn.Module):
         output = torch.matmul(scores, v)
         return scores, output
 
-    def forward(self, x, mask=None):
+    def forward(self, x: Tensor, mask: Tensor | None = None) -> Tuple[Tensor, Tensor]:
         bs = x.size(0)
         k = self.k_linear(x).view(bs, -1, self.h, self.d_k)
         q = self.q_linear(x).view(bs, -1, self.h, self.d_k)
@@ -65,7 +78,11 @@ class MultiHeadAttention(nn.Module):
 
 
 class FeedForward(nn.Module):
-    def __init__(self, d_model, dropout=0.1):
+    """
+    Feed forward module.
+    """
+
+    def __init__(self, d_model: int, dropout: float = 0.1):
         super().__init__()
         self.net = nn.Sequential(
             nn.Linear(d_model, d_model * 2),
@@ -75,13 +92,17 @@ class FeedForward(nn.Module):
         )
         self.layer_norm = nn.LayerNorm(d_model, eps=1e-6)
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         output = self.net(x)
         return self.layer_norm(x + output)
 
 
 class GlobalReactivityAttention(nn.Module):
-    def __init__(self, d_model, heads, n_layers=1, dropout=0.1):
+    """
+    A transformer-like attention module.
+    """
+
+    def __init__(self, d_model: int, heads: int, n_layers: int = 1, dropout: float = 0.1):
         super().__init__()
         self.n_layers = n_layers
         att_stack = []
@@ -92,7 +113,7 @@ class GlobalReactivityAttention(nn.Module):
         self.att_stack = nn.ModuleList(att_stack)
         self.pff_stack = nn.ModuleList(pff_stack)
 
-    def forward(self, x, mask):
+    def forward(self, x: Tensor, mask: Tensor) -> Tensor:
         scores = []
         for n in range(self.n_layers):
             score, x = self.att_stack[n](x, mask)
@@ -102,6 +123,11 @@ class GlobalReactivityAttention(nn.Module):
 
 
 class EmbeddingGNN(nn.Module):
+    """
+    A GNN model that embeds the input graph into a fixed-size vector. It consists of `num_layers` GNN layers
+    optionally followed by a global attention mechanism.
+    """
+
     def __init__(
         self,
         hidden_dim: int,
@@ -112,6 +138,18 @@ class EmbeddingGNN(nn.Module):
         cache_dict: Dict[Union[Molecule, Pattern], Any] | None = None,
         use_attention: bool = True,
     ):
+        """
+        Initialize the model.
+
+        Args:
+            hidden_dim: a hidden dimension.
+            num_layers: number of GNN layers.
+            num_attention_heads: number of attention heads.
+            node_featurizer: a featurizer for the nodes.
+            cache: whether to cache the graph encodings (initial graph features obtained with a featurizer).
+            cache_dict: an optional cache dictionary for shared graph encodings.
+            use_attention: whether to use the global attention mechanism.
+        """
         super().__init__()
         self.hidden_dim = hidden_dim
         self.node_featurizer = node_featurizer
@@ -147,6 +185,14 @@ class EmbeddingGNN(nn.Module):
         super().to(device)
 
     def featurize(self, items: List[Union[Molecule, Pattern]]) -> List[dgl.DGLGraph]:
+        """
+        Featurize the input items.
+        Args:
+            items: a list of molecules or patterns to featurize.
+
+        Returns:
+            a list of DGLGraphs.
+        """
         if self.cache:
             graphs = []
             for item in items:
@@ -158,7 +204,20 @@ class EmbeddingGNN(nn.Module):
             return graphs
         return [self.featurize_fn(item.rdkit_mol) for item in items]
 
-    def forward(self, items: List[Union[Molecule, Pattern]]) -> TensorType[float]:
+    def forward(
+        self, items: List[Union[Molecule, Pattern]]
+    ) -> TensorType[float] | Tuple[TensorType[float], dgl.DGLGraph]:
+        """
+        Forward pass.
+
+        Args:
+            items: a list of molecules or patterns to embed.
+        Returns:
+            if `use_attention` is True, returns the nodes embeddings in the dense format of shape
+                (batch_size, max_num_nodes, hidden_dim)
+            Otherwise, returns the embeddings in the sparse format of shape (num_nodes, hidden_dim) along with
+                a batched DGLGraph.
+        """
         graphs = self.featurize(items)
         batch = dgl.batch(graphs).to(self.device)
         x = self.gnn(batch, batch.ndata["h"], batch.edata["e"])

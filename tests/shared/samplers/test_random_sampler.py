@@ -8,20 +8,17 @@ from torchtyping import TensorType
 from gflownet.api.env_base import EnvBase
 from gflownet.api.reward import Reward
 from gflownet.api.trajectories import Trajectories
-from gflownet.common.policies.uniform_policy import UniformPolicy
-from gflownet.common.samplers.sequential_sampler import SequentialSampler
-from tests.common.objectives.test_subtrajectory_balance_gfn import MockProxy
-from tests.common.policies.test_uniform_policy import IndexedList
+from gflownet.shared.policies.uniform_policy import UniformPolicy
+from gflownet.shared.samplers.random_sampler import RandomSampler
+from tests.shared.objectives.test_subtrajectory_balance_gfn import MockProxy
+from tests.shared.policies.test_uniform_policy import IndexedList
 
 
 class MockEnv(EnvBase[int, IndexedList, int]):
-    def __init__(self, max_component: int = 3, max_sum: int = 5, size: int = 20):
+    def __init__(self, max_component: int = 3, max_sum: int = 5):
         super().__init__()
         self.max_component = max_component
         self.max_sum = max_sum
-        self.size = size
-        self.source_states = [0] * size
-        self.terminal_states = [max_sum + random.randint(0, max_sum) for _ in range(self.size)]
 
     def get_forward_action_spaces(self, states: List[int]) -> List[IndexedList]:
         return [IndexedList(list(range(self.max_component + 1))) for _ in states]
@@ -43,63 +40,54 @@ class MockEnv(EnvBase[int, IndexedList, int]):
         return [state == 0 for state in states]
 
     def sample_terminal_states(self, n_states: int) -> List[int]:
-        indices = random.choices(range(self.size), k=n_states)
-        return [self.terminal_states[i] for i in indices]
+        return [self.max_sum + random.randint(0, self.max_sum)] * n_states
 
     def sample_source_states(self, n_states: int) -> List[int]:
-        indices = random.choices(range(self.size), k=n_states)
-        return [self.source_states[i] for i in indices]
+        return [0] * n_states
 
     def get_num_source_states(self) -> int:
-        return self.size
+        pass
 
     def get_source_states_at_index(self, index: List[int]) -> List[int]:
-        return [self.source_states[i] for i in index]
+        pass
 
     def get_num_terminal_states(self) -> int:
-        return self.size
+        pass
 
     def get_terminal_states_at_index(self, index: List[int]) -> List[int]:
-        return [self.terminal_states[i] for i in index]
+        pass
 
 
-@pytest.mark.parametrize("size", [10, 20])
+@pytest.mark.parametrize("n_trajectories", [10, 20])
 @pytest.mark.parametrize("batch_size", [4, 16])
-@pytest.mark.parametrize("n_repeats", [1, 3])
-def test__sequential_sampler__forward_env(size: int, batch_size: int, n_repeats: int):
-    env = MockEnv(size=size)
-    sampler = SequentialSampler(
-        policy=UniformPolicy(), env=env, reward=Reward(proxy=MockProxy()), n_repeats=n_repeats
-    )
+def test__random_sampler__forward_env(n_trajectories: int, batch_size: int):
+    env = MockEnv()
+    sampler = RandomSampler(policy=UniformPolicy(), env=env, reward=Reward(proxy=MockProxy()))
 
     trajectories_list = []
-    for trajectories in sampler.get_trajectories_iterator(-1, batch_size):
+    for trajectories in sampler.get_trajectories_iterator(n_trajectories, batch_size):
         trajectories_list.append(trajectories)
 
     trajectories = Trajectories.from_trajectories(trajectories_list)
     last_states = trajectories.get_last_states_flat()
     assert env.get_terminal_mask(last_states).all()
-    assert len(last_states) == size * n_repeats
+    assert len(last_states) == n_trajectories
 
 
-@pytest.mark.parametrize("size", [10, 20])
+@pytest.mark.parametrize("n_trajectories", [10, 20])
 @pytest.mark.parametrize("batch_size", [4, 16])
-@pytest.mark.parametrize("n_repeats", [1, 3])
-def test__sequential_sampler__backward_env(size: int, batch_size: int, n_repeats: int):
-    env = MockEnv(size=size)
-    sampler = SequentialSampler(
-        policy=UniformPolicy(),
-        env=env.reversed(),
-        reward=Reward(proxy=MockProxy()),
-        n_repeats=n_repeats,
+def test__random_sampler__backward_env(n_trajectories: int, batch_size: int):
+    env = MockEnv()
+    sampler = RandomSampler(
+        policy=UniformPolicy(), env=env.reversed(), reward=Reward(proxy=MockProxy())
     )
 
     trajectories_list = []
-    for trajectories in sampler.get_trajectories_iterator(-1, batch_size):
+    for trajectories in sampler.get_trajectories_iterator(n_trajectories, batch_size):
         trajectories_list.append(trajectories)
 
     trajectories = Trajectories.from_trajectories(trajectories_list)
 
     last_states = trajectories.get_last_states_flat()
     assert env.get_terminal_mask(last_states).all()
-    assert len(last_states) == size * n_repeats
+    assert len(last_states) == n_trajectories

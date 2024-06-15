@@ -4,7 +4,7 @@ import pytest
 from torchtyping import TensorType
 
 from gflownet.api.policy_base import PolicyBase
-from gflownet.common.policies.exploratory_policy import ExploratoryPolicy
+from gflownet.shared.policies.exploratory_policy import ExploratoryPolicy
 from gflownet.utils.helpers import seed_everything
 
 

@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import List, Tuple
 
-from gflownet.common.policies.uniform_policy import IndexedActionSpaceBase
+from gflownet.shared.policies.uniform_policy import IndexedActionSpaceBase
 
 
 @dataclass(frozen=True)

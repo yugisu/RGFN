@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Dict, List
 
 import torch
 from dgl import random_walk_pe
@@ -81,34 +81,47 @@ ATOM_TYPES = [
 ]
 
 
-def charge_diff_one_hot(atom, allowable_set=None, encode_unknown=False):
-    if allowable_set is None:
-        allowable_set = list(range(-3, 3))
+def charge_diff_one_hot(atom: Chem.Atom, encode_unknown: bool = False) -> List[bool]:
+    """
+    Encode the charge difference in the reactant pattern as one-hot encoding.
+    """
+    allowable_set = list(range(-3, 3))
     charges_diff = atom.GetIntProp("charges_diff") if atom.HasProp("charges_diff") else 0
     return one_hot_encoding(charges_diff, allowable_set, encode_unknown)
 
 
-def hydrogen_diff_one_hot(atom, allowable_set=None, encode_unknown=False):
-    if allowable_set is None:
-        allowable_set = list(range(-3, 3))
+def hydrogen_diff_one_hot(atom: Chem.Atom, encode_unknown: bool = False):
+    """
+    Encode the hydrogen number difference in the reactant pattern as one-hot encoding.
+    """
+    allowable_set = list(range(-3, 3))
     hydrogen_diff = atom.GetIntProp("hydrogen_diff") if atom.HasProp("hydrogen_diff") else 0
     return one_hot_encoding(hydrogen_diff, allowable_set, encode_unknown)
 
 
-def chiral_diff_one_hot(atom, allowable_set=None, encode_unknown=False):
-    if allowable_set is None:
-        allowable_set = list(range(-1, 1))
+def chiral_diff_one_hot(atom: Chem.Atom, encode_unknown: bool = False):
+    """
+    Encode the chiral difference in the reactant pattern as one-hot encoding.
+    """
+
+    allowable_set = list(range(-1, 1))
     chiral_diff = atom.GetIntProp("chiral_diff") if atom.HasProp("chiral_diff") else 0
     return one_hot_encoding(chiral_diff, allowable_set, encode_unknown)
 
 
-def mappable_one_hot(atom, allowable_set=None, encode_unknown=False):
-    if allowable_set is None:
-        allowable_set = [0, 1]
+def mappable_one_hot(atom: Chem.Atom, encode_unknown: bool = False):
+    """
+    Encode whether the atom is a mappable atom.
+    """
+    allowable_set = [0, 1]
     return one_hot_encoding(atom.GetAtomMapNum(), allowable_set, encode_unknown)
 
 
 class ReactantNodeFeaturizer(BaseAtomFeaturizer):
+    """
+    Featurizer for the reactant patterns' nodes.
+    """
+
     def __init__(self, atom_data_field="h"):
         super().__init__(
             featurizer_funcs={
@@ -128,13 +141,26 @@ class ReactantNodeFeaturizer(BaseAtomFeaturizer):
 
 
 class JointFeaturizer:
+    """
+    Featurizer that concatenates the atom features and the positional encoding featurizer.
+    """
+
     def __init__(
         self, atom_featurizer: BaseAtomFeaturizer | WeaveAtomFeaturizer, pe_featurizer: Any
     ):
+        """
+        Initialize the featurizer.
+        Args:
+            atom_featurizer: the atom level featurizer.
+            pe_featurizer: the positional encoding featurizer.
+        """
         self.atom_featurizer = atom_featurizer
         self.pe_featurizer = pe_featurizer
 
     def feat_size(self) -> int:
+        """
+        Get the size of the features.
+        """
         return self.atom_featurizer.feat_size() + self.pe_featurizer.feat_size()
 
     def __call__(self, mol: Chem.Mol):
@@ -144,6 +170,10 @@ class JointFeaturizer:
 
 
 class RandomWalkPEFeaturizer:
+    """
+    Featurizer that performs random walk positional encoding.
+    """
+
     def __init__(self, n_steps: int = 16):
         self.n_steps = n_steps
 

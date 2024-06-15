@@ -1,5 +1,6 @@
 import copy
 import random
+from functools import singledispatch
 from typing import Any, Callable, Dict, FrozenSet, List
 
 import gin
@@ -34,7 +35,19 @@ from gflownet.gfns.retro.retro_utils import chiral_type_map_inv, get_backward_te
 
 @gin.configurable()
 class RetroEnv(EnvBase[RetroState, RetroActionSpace, RetroAction]):
+    """
+    The RetroGFN environment. It provides the action spaces and the transitions for three phases of the template
+    composition process of RetroGFN.
+    """
+
     def __init__(self, data_factory: RetroDataFactory, optimize_for_inference: bool = False):
+        """
+        Initialize the RetroGFN environment.
+
+        Args:
+            data_factory: a factory that provides data for the RetroGFN training or inference.
+            optimize_for_inference: whether to cache the states and action spaces for the inference.
+        """
         super().__init__()
         self.source_states = data_factory.get_source_states()
         self.product_patterns = data_factory.get_product_patterns()
@@ -56,6 +69,8 @@ class RetroEnv(EnvBase[RetroState, RetroActionSpace, RetroAction]):
                 product_pattern
             ] = reactant_patterns_indices
 
+        # The above dicts should probably be replaced with @singledispatch,
+        # but it's not clear whether it will be more readable
         self.state_type_to_forward_action_space_fn: Dict[Any, Callable] = {
             FirstPhaseRetroState: self._get_forward_first_phase_action_space,
             SecondPhaseRetroState: self._get_forward_second_phase_action_space,
@@ -85,6 +100,9 @@ class RetroEnv(EnvBase[RetroState, RetroActionSpace, RetroAction]):
         self.state_to_action_space_cache: Dict[RetroState, RetroActionSpace] = {}
 
     def reset_inference_cache(self):
+        """
+        Reset the cache of the states and action spaces for the inference.
+        """
         self.state_3_to_terminal = {}
         self.state_to_action_space_cache = {}
 
@@ -105,6 +123,9 @@ class RetroEnv(EnvBase[RetroState, RetroActionSpace, RetroAction]):
     def _get_forward_first_phase_action_space(
         self, state: FirstPhaseRetroState
     ) -> FirstPhaseRetroActionSpace:
+        """
+        Get the action space for the first phase of the retrosynthesis process.
+        """
         if state.product not in self.product_to_possible_first_phase_actions:
             actions_list: List[FirstPhaseRetroAction] = []
             for lhs_pattern in self.product_patterns:
@@ -125,6 +146,9 @@ class RetroEnv(EnvBase[RetroState, RetroActionSpace, RetroAction]):
     def _get_forward_second_phase_action_space(
         self, state: SecondPhaseRetroState
     ) -> SecondPhaseRetroActionSpace:
+        """
+        Get the action space for the second phase of the retrosynthesis process.
+        """
         reactant_patterns_indices = self.product_pattern_to_reactant_patterns_indices[
             state.product_pattern
         ]
@@ -142,6 +166,9 @@ class RetroEnv(EnvBase[RetroState, RetroActionSpace, RetroAction]):
     def _get_forward_third_phase_action_space(
         self, state: ThirdPhaseRetroState
     ) -> ThirdPhaseRetroActionSpace:
+        """
+        Get the action space for the third phase of the retrosynthesis process.
+        """
         matched_product_nodes = set(mapping.product_node for mapping in state.atom_mapping)
         matched_reactant_tuples = set(
             (mapping.reactant, mapping.reactant_node) for mapping in state.atom_mapping
@@ -175,6 +202,9 @@ class RetroEnv(EnvBase[RetroState, RetroActionSpace, RetroAction]):
     def _get_backward_second_phase_action_space(
         self, state: SecondPhaseRetroState
     ) -> SecondPhaseRetroActionSpace | FirstPhaseRetroActionSpace:
+        """
+        Get the action space for the second phase of the retrosynthesis process.
+        """
         if len(state.reactant_patterns) == 0:
             possible_action = FirstPhaseRetroAction(
                 subgraph_idx=state.subgraph_idx,
@@ -190,6 +220,9 @@ class RetroEnv(EnvBase[RetroState, RetroActionSpace, RetroAction]):
     def _get_backward_third_phase_action_space(
         self, state: ThirdPhaseRetroState
     ) -> ThirdPhaseRetroActionSpace | SecondPhaseRetroActionSpace:
+        """
+        Get the action space for the third phase of the retrosynthesis process.
+        """
         if len(state.atom_mapping) == 0:
             previous_state = SecondPhaseRetroState(
                 product=state.product,
@@ -202,6 +235,9 @@ class RetroEnv(EnvBase[RetroState, RetroActionSpace, RetroAction]):
             return ThirdPhaseRetroActionSpace(state.atom_mapping)
 
     def _get_backward_terminal_action_space(self, state: TerminalRetroState) -> RetroActionSpace:
+        """
+        Get the action space for the terminal state of the retrosynthesis process.
+        """
         previous_state = ThirdPhaseRetroState(
             product=state.product,
             product_pattern=state.product_pattern,
@@ -214,6 +250,9 @@ class RetroEnv(EnvBase[RetroState, RetroActionSpace, RetroAction]):
     def _get_backward_early_terminal_action_space(
         self, state: EarlyTerminalRetroState
     ) -> RetroActionSpace:
+        """
+        Get the action space for the early terminal state of the retrosynthesis process.
+        """
         return EarlyTerminateRetroActionSpace()
 
     def apply_forward_actions(
@@ -228,6 +267,9 @@ class RetroEnv(EnvBase[RetroState, RetroActionSpace, RetroAction]):
     def _apply_forward_first_phase_action(
         self, state: FirstPhaseRetroState, action: FirstPhaseRetroAction
     ) -> SecondPhaseRetroState:
+        """
+        Apply the action of the first phase of the retrosynthesis process.
+        """
         return SecondPhaseRetroState(
             product=state.product,
             subgraph_idx=action.subgraph_idx,
@@ -238,6 +280,9 @@ class RetroEnv(EnvBase[RetroState, RetroActionSpace, RetroAction]):
     def _apply_forward_second_phase_action(
         self, state: SecondPhaseRetroState, action: SecondPhaseRetroAction
     ) -> SecondPhaseRetroState | ThirdPhaseRetroState:
+        """
+        Apply the action of the second phase of the retrosynthesis process.
+        """
         new_reactants_patterns = state.reactant_patterns | {
             self.reactant_patterns[action.reactant_pattern_idx]
         }
@@ -261,6 +306,9 @@ class RetroEnv(EnvBase[RetroState, RetroActionSpace, RetroAction]):
     def _apply_forward_third_phase_action(
         self, state: ThirdPhaseRetroState, action: ThirdPhaseRetroAction
     ) -> ThirdPhaseRetroState | TerminalRetroState:
+        """
+        Apply the action of the third phase of the retrosynthesis process.
+        """
         new_atom_mapping = state.atom_mapping | {action.mapping}
         new_state = ThirdPhaseRetroState(
             product=state.product,
@@ -283,14 +331,31 @@ class RetroEnv(EnvBase[RetroState, RetroActionSpace, RetroAction]):
     def _apply_forward_early_terminate_action(
         self, state: RetroState, action: EarlyTerminateRetroAction
     ) -> EarlyTerminalRetroState:
+        """
+        Apply the action of the early termination of the retrosynthesis process.
+        """
         return EarlyTerminalRetroState(previous_state=state)
 
     def _get_terminal_state(self, state: ThirdPhaseRetroState) -> TerminalRetroState:
+        """
+        Get the terminal state of the retrosynthesis process from the third phase state.
+        """
         template_dict = get_backward_template(
             state.product_pattern, state.reactant_patterns, state.atom_mapping
         )
 
         def _matches(reactants: List[Chem.Mol]) -> bool:
+            """
+            Check if the reactants match the product pattern and the atom mapping. The rdkit applies the reaction
+            template to all possible places in the product molecule, resulting in a set of sets of reactants.
+            In RetroGFN, we already pre-matched the template in a concrete place in the product molecule, so we need to
+            retrieve the template application that corresponds to our pre-matched template.
+            Args:
+                reactants: a list of reactants that are generated by application of the reaction template to the product.
+
+            Returns:
+                True if the reactants were obtained by application of our pre-matched template, False otherwise.
+            """
             for reactant in reactants:
                 for atom in reactant.GetAtoms():
                     if atom.HasProp("old_mapno"):
@@ -305,6 +370,16 @@ class RetroEnv(EnvBase[RetroState, RetroActionSpace, RetroAction]):
             product_mol: Chem.Mol,
             map_num_to_reactant_pattern_node: Dict[int, Chem.Atom],
         ) -> Chem.Mol:
+            """
+            Apply the relative changes of number of hydrogens, charge, and chiral tag to the reactants' atoms.
+            Args:
+                reactant_mol: output reactant molecule.
+                product_mol: input product molecule.
+                map_num_to_reactant_pattern_node: a mapping that helps to find the corresponding reactant pattern node.
+
+            Returns:
+                The reactant molecule with the updated atom properties.
+            """
             for atom in reactant_mol.GetAtoms():
                 if not atom.IsInRing() and atom.GetIsAromatic():
                     atom.SetIsAromatic(False)
@@ -389,6 +464,9 @@ class RetroEnv(EnvBase[RetroState, RetroActionSpace, RetroAction]):
     def _apply_backward_first_phase_action(
         self, state: SecondPhaseRetroState, action: FirstPhaseRetroAction
     ) -> FirstPhaseRetroState:
+        """
+        Apply the action of the first phase of the retrosynthesis process.
+        """
         return FirstPhaseRetroState(
             product=state.product,
         )
@@ -396,6 +474,9 @@ class RetroEnv(EnvBase[RetroState, RetroActionSpace, RetroAction]):
     def _apply_backward_second_phase_action(
         self, state: SecondPhaseRetroState | ThirdPhaseRetroState, action: SecondPhaseRetroAction
     ) -> SecondPhaseRetroState:
+        """
+        Apply the action of the second phase of the retrosynthesis process.
+        """
         pattern_to_remove = self.reactant_patterns[action.reactant_pattern_idx]
         reactant_patterns_list = list(state.reactant_patterns)
         reactant_patterns_list.remove(pattern_to_remove)
@@ -411,6 +492,9 @@ class RetroEnv(EnvBase[RetroState, RetroActionSpace, RetroAction]):
     def _apply_backward_third_phase_action(
         self, state: ThirdPhaseRetroState | TerminalRetroState, action: ThirdPhaseRetroAction
     ) -> ThirdPhaseRetroState:
+        """
+        Apply the action of the third phase of the retrosynthesis process.
+        """
         new_atom_mapping = state.atom_mapping - {action.mapping}
         return ThirdPhaseRetroState(
             product=state.product,
@@ -423,6 +507,9 @@ class RetroEnv(EnvBase[RetroState, RetroActionSpace, RetroAction]):
     def _apply_backward_early_terminate_action(
         self, state: EarlyTerminalRetroState, action: EarlyTerminateRetroAction
     ) -> ThirdPhaseRetroState:
+        """
+        Apply the action of the early termination of the retrosynthesis process.
+        """
         return state.previous_state
 
     def get_terminal_mask(self, states: List[RetroState]) -> List[bool]:
