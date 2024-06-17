@@ -22,8 +22,7 @@ def grid_search(
     params: List[Dict[str, List[Any]]] | Dict[str, List[Any]],
     logger: LoggerBase,
     best_metric: str = "loss",
-    metric_direction: Literal["auto", "min", "max"] = "min",
-    checkpoint_best: bool = True,
+    metric_direction: Literal["auto", "min", "max"] = "auto",
     seed: int = 42,
     skip: int = 0,
 ):
@@ -66,11 +65,7 @@ def grid_search(
         gin.clear_config()
         gin.parse_config_files_and_bindings(config_files, bindings=bindings)
         seed_everything(seed)
-        trainer = Trainer(
-            best_metric=best_metric,
-            metric_direction=metric_direction,
-            checkpoint_mode=checkpoint_best,
-        )
+        trainer = Trainer()
         trainer.logger.log_code("gflownet")
         trainer.logger.log_to_file("\n".join(bindings), "bindings")
         trainer.logger.log_to_file(gin.operative_config_str(), "operative_config")

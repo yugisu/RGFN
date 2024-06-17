@@ -40,7 +40,7 @@ class SamplerBase(ABC, Generic[TState, TActionSpace, TAction]):
     @abc.abstractmethod
     def get_trajectories_iterator(
         self, n_total_trajectories: int, batch_size: int
-    ) -> Iterator[Trajectories]:
+    ) -> Iterator[Trajectories[TState, TActionSpace, TAction]]:
         """
         Get an iterator that samples trajectories from the environment. It can be used to sampled trajectories in
             batched manner.

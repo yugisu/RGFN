@@ -15,6 +15,7 @@ from gflownet.utils.helpers import dict_mean, infer_metric_direction
 from ..api.objective_base import ObjectiveBase
 from ..api.replay_buffer_base import ReplayBufferBase
 from ..api.sampler_base import SamplerBase
+from .logger.dummy_logger import DummyLogger
 from .optimizers.lr_scheduler import LRScheduler
 from .optimizers.optimizer_base import OptimizerBase
 
@@ -29,18 +30,18 @@ class Trainer(Generic[TState, TActionSpace, TAction]):
         self,
         *,
         run_dir: str | Path,
-        logger: LoggerBase,
+        logger: LoggerBase | None,
         train_forward_sampler: SamplerBase[TState, TActionSpace, TAction] | None,
-        train_backward_sampler: SamplerBase[TState, TActionSpace, TAction] | None,
+        train_backward_sampler: SamplerBase[TState, TActionSpace, TAction] | None = None,
         train_replay_buffer: ReplayBufferBase[TState, TActionSpace, TAction] | None,
         train_forward_n_trajectories: int,
-        train_backward_n_trajectories: int,
+        train_backward_n_trajectories: int = 0,
         train_replay_n_trajectories: int,
         train_batch_size: int = -1,
         train_metrics: Sequence[MetricsBase] = (),
         train_artifacts: Sequence[ArtifactsBase] = (),
-        valid_sampler: SamplerBase[TState, TActionSpace, TAction] | None,
-        valid_n_trajectories: int,
+        valid_sampler: SamplerBase[TState, TActionSpace, TAction] | None = None,
+        valid_n_trajectories: int = 0,
         valid_batch_size: int = -1,
         valid_every_n_iterations: int = 10,
         valid_metrics: Sequence[MetricsBase] = (),
@@ -48,7 +49,7 @@ class Trainer(Generic[TState, TActionSpace, TAction]):
         objective: ObjectiveBase[TState, TActionSpace, TAction],
         optimizer: OptimizerBase,
         gradient_clipping_norm: float = 10.0,
-        lr_scheduler: LRScheduler | None,
+        lr_scheduler: LRScheduler | None = None,
         n_iterations: int,
         checkpoint_mode: Literal["none", "last", "best"] = "best",
         best_metric: str = "loss",
@@ -99,7 +100,7 @@ class Trainer(Generic[TState, TActionSpace, TAction]):
         self.valid_metrics = MetricsList(valid_metrics)
         self.valid_artifacts = ArtifactsList(valid_artifacts)
         self.objective = objective
-        self.logger = logger
+        self.logger = logger if logger is not None else DummyLogger()
         self.optimizer = optimizer
         self.lr_scheduler = lr_scheduler
         self.n_iterations = n_iterations
@@ -294,7 +295,9 @@ class Trainer(Generic[TState, TActionSpace, TAction]):
                 or (i == 0 and self.sanity_check_evaluation)
                 or i == self.n_iterations - 1
             ):
-                valid_metrics = self.valid_step() | {"epoch": i}
+                valid_metrics = metrics if self.valid_sampler is None else self.valid_step()
+                valid_metrics = valid_metrics | {"epoch": i}
+
                 self.make_checkpoint(checkpoint_name="last_gfn", metrics=valid_metrics)
                 if self.checkpoint_mode:
                     if self.metric_direction == "min":

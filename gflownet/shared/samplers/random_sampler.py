@@ -25,9 +25,22 @@ class RandomSampler(
     ):
         super().__init__(policy, env, reward)
 
+    def sample_trajectories(
+        self, n_trajectories: int
+    ) -> Trajectories[TState, TActionSpace, TAction]:
+        """
+        Sample n_trajectories from the environment using the policy.
+        Args:
+            n_trajectories: the number of trajectories to sample.
+        Returns:
+            the sampled trajectories.
+        """
+        source_states = self.env.sample_source_states(n_trajectories)
+        return self.sample_trajectories_from_sources(source_states)
+
     def get_trajectories_iterator(
         self, n_total_trajectories: int, batch_size: int
-    ) -> Iterator[Trajectories]:
+    ) -> Iterator[Trajectories[TState, TActionSpace, TAction]]:
         """
         Get an iterator that samples trajectories from the environment. It can be used to sampled trajectories in
             batched manner.
@@ -44,5 +57,4 @@ class RandomSampler(
         if n_total_trajectories % batch_size:
             batches_sizes.append(n_total_trajectories % batch_size)
         for batch_size in batches_sizes:
-            source_states = self.env.sample_source_states(batch_size)
-            yield self.sample_trajectories_from_sources(source_states)
+            yield self.sample_trajectories(batch_size)
