@@ -1,5 +1,5 @@
 WandbLogger.mode = 'online'
-WandbLogger.project_name = 'GFlowNets'
+WandbLogger.project_name = 'RGFN'
 
 WandbLogger.logdir = @logdir/get_str()
 WandbLogger.experiment_name = %run_name

@@ -1,11 +1,11 @@
 import torch
 
-from gflownet import RandomSampler, UniformPolicy
-from gflownet.api.env_base import EnvBase, TAction, TState
-from gflownet.api.proxy_base import ProxyBase, ProxyOutput
-from gflownet.shared.policies.uniform_policy import TIndexedActionSpace
-from gflownet.shared.proxies.cached_proxy import CachedProxyBase
-from gflownet.utils.helpers import seed_everything
+from rgfn import RandomSampler, UniformPolicy
+from rgfn.api.env_base import EnvBase, TAction, TState
+from rgfn.api.proxy_base import ProxyBase, ProxyOutput
+from rgfn.shared.policies.uniform_policy import TIndexedActionSpace
+from rgfn.shared.proxies.cached_proxy import CachedProxyBase
+from rgfn.utils.helpers import seed_everything
 
 
 def helper__test_proxy__returns_sensible_values(
@@ -28,9 +28,7 @@ def helper__test_proxy__returns_sensible_values(
         reward=None,
     )
 
-    trajectories = next(
-        iter(sampler.get_trajectories_iterator(n_total_trajectories=n_trajectories, batch_size=-1))
-    )
+    trajectories = sampler.sample_trajectories(n_trajectories=n_trajectories)
 
     states = trajectories.get_last_states_flat()
     proxy_output = proxy.compute_proxy_output(states)
@@ -66,9 +64,7 @@ def helper__test_proxy__is_deterministic(
         reward=None,
     )
 
-    trajectories = next(
-        iter(sampler.get_trajectories_iterator(n_total_trajectories=n_trajectories, batch_size=-1))
-    )
+    trajectories = sampler.sample_trajectories(n_trajectories=n_trajectories)
 
     states = trajectories.get_last_states_flat()
     proxy_output_1 = proxy.compute_proxy_output(states)

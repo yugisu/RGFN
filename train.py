@@ -3,9 +3,9 @@ from pathlib import Path
 
 import gin
 
-from gflownet.trainer.trainer import Trainer
-from gflownet.utils.helpers import seed_everything
 from gin_config import get_time_stamp
+from rgfn.trainer.trainer import Trainer
+from rgfn.utils.helpers import seed_everything
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

@@ -1,7 +1,7 @@
-from gflownet import RandomSampler, UniformPolicy
-from gflownet.api.env_base import EnvBase, TAction, TState
-from gflownet.shared.policies.uniform_policy import TIndexedActionSpace
-from gflownet.utils.helpers import seed_everything
+from rgfn import RandomSampler, UniformPolicy
+from rgfn.api.env_base import EnvBase, TAction, TState
+from rgfn.shared.policies.uniform_policy import TIndexedActionSpace
+from rgfn.utils.helpers import seed_everything
 
 
 def helper__test_env__forward_backward_consistency(
@@ -45,7 +45,7 @@ def helper__test_env__forward_backward_consistency(
 def helper__test_env__backward_forward_consistency(
     env: EnvBase[TState, TIndexedActionSpace, TAction],
     n_trajectories: int,
-    sample_from_env: bool = True,
+    sample_directly_from_reversed_env: bool = True,
 ):
     """
     A helper function that tests whether the backward pass of the environment can be obtained by applying the forward
@@ -53,7 +53,7 @@ def helper__test_env__backward_forward_consistency(
     Args:
         env: environment to be tested
         n_trajectories: number of trajectories to sample
-        sample_from_env: whether to sample trajectories directly from the reversed env (assumes that the env has can
+        sample_directly_from_reversed_env: whether to sample trajectories directly from the reversed env (assumes that the env has can
         implements `sample_from_terminal_states` method) or sample from the original env and then sample from the
         reversed env using the last states of the obtained trajectories.
 
@@ -62,20 +62,14 @@ def helper__test_env__backward_forward_consistency(
     """
     seed_everything(42)
 
-    if sample_from_env:
+    if sample_directly_from_reversed_env:
         sampler = RandomSampler(
             policy=UniformPolicy(),
             env=env.reversed(),
             reward=None,
         )
 
-        trajectories = next(
-            iter(
-                sampler.get_trajectories_iterator(
-                    n_total_trajectories=n_trajectories, batch_size=-1
-                )
-            )
-        )
+        trajectories = sampler.sample_trajectories(n_trajectories=n_trajectories)
     else:
         sampler = RandomSampler(
             policy=UniformPolicy(),
@@ -83,13 +77,7 @@ def helper__test_env__backward_forward_consistency(
             reward=None,
         )
 
-        trajectories = next(
-            iter(
-                sampler.get_trajectories_iterator(
-                    n_total_trajectories=n_trajectories, batch_size=-1
-                )
-            )
-        )
+        trajectories = sampler.sample_trajectories(n_trajectories=n_trajectories)
         last_states = trajectories.get_last_states_flat()
         reverse_sampler = RandomSampler(
             policy=UniformPolicy(),

@@ -3,9 +3,9 @@ from typing import List
 import pytest
 from torchtyping import TensorType
 
-from gflownet.api.policy_base import PolicyBase
-from gflownet.shared.policies.exploratory_policy import ExploratoryPolicy
-from gflownet.utils.helpers import seed_everything
+from rgfn.api.policy_base import PolicyBase
+from rgfn.shared.policies.exploratory_policy import ExploratoryPolicy
+from rgfn.utils.helpers import seed_everything
 
 
 class DeterministicPolicy(PolicyBase[int, int, int]):

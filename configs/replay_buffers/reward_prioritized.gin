@@ -1,0 +1,6 @@
+RewardPrioritizedReplayBuffer.sampler = %train_backward_sampler
+RewardPrioritizedReplayBuffer.max_size = 1e6
+RewardPrioritizedReplayBuffer.temperature = 8.0
+
+train_replay_buffer/gin.singleton.constructor = @RewardPrioritizedReplayBuffer
+train_replay_buffer = @train_replay_buffer/gin.singleton()

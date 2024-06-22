@@ -7,10 +7,10 @@ from typing import Any, Dict, List, Literal
 import gin
 from torch_geometric import seed_everything
 
-from gflownet.trainer.logger.logger_base import LoggerBase
-from gflownet.trainer.trainer import Trainer
-from gflownet.utils.helpers import infer_metric_direction
 from gin_config import get_time_stamp
+from rgfn.trainer.logger.logger_base import LoggerBase
+from rgfn.trainer.trainer import Trainer
+from rgfn.utils.helpers import infer_metric_direction
 
 BEST_PARAM = "@best_param"
 
@@ -32,7 +32,7 @@ def grid_search(
     best_valid_metrics: Dict[str, float] = {}
     best_parameters: Dict[str, Any] = {}
 
-    logger.log_code("gflownet")
+    logger.log_code("rgfn")
     logger.log_to_file(gin.operative_config_str(), "grid_operative_config")
     logger.log_to_file(gin.config_str(), "grid_config")
     logger.log_to_file(json.dumps(params, indent=2), "grid_params")

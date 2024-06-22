@@ -1,13 +1,13 @@
 import pytest
 import torch
+from shared.objectives.test_subtrajectory_balance_gfn import MockPolicy, MockProxy
 
-from gflownet.api.reward import Reward
-from gflownet.api.trajectories import Trajectories
-from gflownet.shared.objectives import TrajectoryBalanceObjective
-from gflownet.shared.objectives.conditioned_trajectory_balance_objective import (
+from rgfn.api.reward import Reward
+from rgfn.api.trajectories import Trajectories
+from rgfn.shared.objectives import TrajectoryBalanceObjective
+from rgfn.shared.objectives.conditioned_trajectory_balance_objective import (
     ConditionedTrajectoryBalanceObjective,
 )
-from tests.shared.objectives.test_subtrajectory_balance_gfn import MockPolicy, MockProxy
 
 
 @pytest.fixture()

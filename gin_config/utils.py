@@ -3,7 +3,7 @@ from typing import Any, List
 
 import gin
 
-from gflownet.api.env_base import EnvBase, TAction, TActionSpace, TState
+from rgfn.api.env_base import EnvBase, TAction, TActionSpace, TState
 
 
 @gin.configurable()

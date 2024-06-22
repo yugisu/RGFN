@@ -3,9 +3,9 @@ from pathlib import Path
 
 import gin
 
-from gflownet import ROOT_DIR
-from gflownet.trainer.trainer import Trainer
-from gflownet.utils.helpers import seed_everything
+from rgfn import ROOT_DIR
+from rgfn.trainer.trainer import Trainer
+from rgfn.utils.helpers import seed_everything
 
 
 def helper__test_training__runs_properly(
@@ -37,3 +37,4 @@ def helper__test_training__runs_properly(
     trainer = Trainer(n_iterations=1)
     trainer.train()
     trainer.close()
+    gin.clear_config()

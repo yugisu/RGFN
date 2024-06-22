@@ -2,7 +2,7 @@ from typing import List
 
 import torch
 
-from gflownet.api.trajectories import Trajectories
+from rgfn.api.trajectories import Trajectories
 
 
 def test__trajectories__add_source_states():

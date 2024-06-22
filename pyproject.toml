@@ -1,3 +1,7 @@
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
 [tool.black]
 line-length = 100
 include = '\.pyi?$'
@@ -5,3 +9,34 @@ include = '\.pyi?$'
 [tool.mypy]
 python_version = 3.11
 ignore_missing_imports = true
+
+[tool.poetry]
+name = "rgfn"
+version = "0.0.1"
+description = "RGFN: Synthesizable Molecular Generation Using GFlowNets"
+authors = ["Michał Koziarski", "Andrei Rekesh", "Dmytro Shevchuk", "Almer van der Sloot", "Piotr Gaiński", "Yoshua Bengio", "Cheng-Hao Liu", "Mike Tyers", "Robert A. Batey"]
+
+[tool.poetry.dependencies]
+torch = '2.3.0'
+torch-geometric = '2.5.3'
+torchmetrics = '1.2.0'
+torchtyping = '0.1.4'
+dgl = '1.1.2'
+dgllife = '0.3.2'
+tqdm = '4.66.1'
+wandb = '0.15.12'
+typing-extensions = '4.8.0'
+pre-commit = '3.5.0'
+omegaconf = '2.3.0'
+gin-config = '0.5.0'
+more-itertools = '10.1.0'
+pandas = '2.1.1'
+rdkit = '2023.3.3'
+pydantic = '1.10.5'
+pytest = '7.4.2'
+jupyter = '1.0.0'
+papermill = '2.4.0'
+numpy = '1.23.2'
+openpyxl = '3.1.4'
+meeko = '0.5.1'
+wurlitzer = '3.1.0'

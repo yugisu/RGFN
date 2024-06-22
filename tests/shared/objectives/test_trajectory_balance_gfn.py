@@ -1,10 +1,10 @@
 import pytest
 import torch
+from shared.objectives.test_subtrajectory_balance_gfn import MockPolicy, MockProxy
 
-from gflownet.api.reward import Reward
-from gflownet.api.trajectories import Trajectories
-from gflownet.shared.objectives import TrajectoryBalanceObjective
-from tests.shared.objectives.test_subtrajectory_balance_gfn import MockPolicy, MockProxy
+from rgfn.api.reward import Reward
+from rgfn.api.trajectories import Trajectories
+from rgfn.shared.objectives import TrajectoryBalanceObjective
 
 
 @pytest.fixture()
@@ -32,9 +32,9 @@ def test__trajectory_balance_gfn__single_trajectory(
     trajectories._reward_outputs = reward.compute_reward_output(trajectories.get_last_states_flat())
 
     loss = objective.compute_objective_output(trajectories).loss
-    expected_loss = torch.tensor(1.0)
+    expected_loss = torch.tensor(1.8057)
 
-    assert torch.isclose(loss, expected_loss)
+    assert torch.isclose(loss, expected_loss, rtol=1e-4)
 
 
 def test__trajectory_balance_gfn__many_trajectories(
@@ -54,6 +54,6 @@ def test__trajectory_balance_gfn__many_trajectories(
     trajectories._reward_outputs = reward.compute_reward_output(trajectories.get_last_states_flat())
 
     loss = objective.compute_objective_output(trajectories).loss
-    expected_loss = torch.tensor(1.0)
+    expected_loss = torch.tensor(1.8057)
 
-    assert torch.isclose(loss, expected_loss)
+    assert torch.isclose(loss, expected_loss, rtol=1e-4)

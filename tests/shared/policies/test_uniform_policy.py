@@ -3,11 +3,8 @@ from typing import List
 
 import pytest
 
-from gflownet.shared.policies.uniform_policy import (
-    IndexedActionSpaceBase,
-    UniformPolicy,
-)
-from gflownet.utils.helpers import seed_everything
+from rgfn.shared.policies.uniform_policy import IndexedActionSpaceBase, UniformPolicy
+from rgfn.utils.helpers import seed_everything
 
 
 @dataclass

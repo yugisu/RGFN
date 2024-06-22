@@ -1,0 +1,4 @@
+proxy/gin.singleton.constructor = @DockingMoleculeProxy
+train_proxy = @proxy/gin.singleton()
+valid_proxy = %train_proxy
+DockingMoleculeProxy.qv_dir = '/home/mila/m/michal.koziarski/Vina-GPU-2.1_proxy_v2/QuickVina2-GPU-2.1'

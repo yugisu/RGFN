@@ -3,15 +3,15 @@ from typing import List
 
 import pytest
 import torch
+from shared.objectives.test_subtrajectory_balance_gfn import MockProxy
+from shared.policies.test_uniform_policy import IndexedList
 from torchtyping import TensorType
 
-from gflownet.api.env_base import EnvBase
-from gflownet.api.reward import Reward
-from gflownet.api.trajectories import Trajectories
-from gflownet.shared.policies.uniform_policy import UniformPolicy
-from gflownet.shared.samplers.random_sampler import RandomSampler
-from tests.shared.objectives.test_subtrajectory_balance_gfn import MockProxy
-from tests.shared.policies.test_uniform_policy import IndexedList
+from rgfn.api.env_base import EnvBase
+from rgfn.api.reward import Reward
+from rgfn.api.trajectories import Trajectories
+from rgfn.shared.policies.uniform_policy import UniformPolicy
+from rgfn.shared.samplers.random_sampler import RandomSampler
 
 
 class MockEnv(EnvBase[int, IndexedList, int]):

@@ -5,11 +5,11 @@ import pytest
 import torch
 from torchtyping import TensorType
 
-from gflownet.api.policy_base import PolicyBase
-from gflownet.api.proxy_base import ProxyBase, ProxyOutput
-from gflownet.api.reward import Reward
-from gflownet.api.trajectories import Trajectories
-from gflownet.shared.objectives import SubTrajectoryBalanceObjective
+from rgfn.api.policy_base import PolicyBase
+from rgfn.api.proxy_base import ProxyBase, ProxyOutput
+from rgfn.api.reward import Reward
+from rgfn.api.trajectories import Trajectories
+from rgfn.shared.objectives import SubTrajectoryBalanceObjective
 
 
 class MockProxy(ProxyBase[int]):
