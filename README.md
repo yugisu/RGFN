@@ -17,7 +17,6 @@ pip install -e .
 pip install pre-commit
 pre-commit install
 ```
-where device can be either `cuda` or `cpu`.
 
 You also need to download the data from [google drive](https://drive.google.com/drive/folders/1h53J3XT_usqnR87JvxJfvF15BOyjp17k): into `data` directory.
 
