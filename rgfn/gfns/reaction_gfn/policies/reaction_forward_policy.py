@@ -187,7 +187,7 @@ class ReactionForwardPolicy(
         shared_embeddings: SharedEmbeddings,
     ) -> TensorType[float]:
         embedding_indices = [
-            shared_embeddings.molecule_reaction_to_idx[(state.molecule, state.reaction.reaction)]
+            shared_embeddings.molecule_reaction_to_idx[(state.molecule, state.reaction)]
             for state in states
         ]
         embedding_indices = torch.tensor(embedding_indices).long().to(self.device)
@@ -263,13 +263,13 @@ class ReactionForwardPolicy(
             elif isinstance(action_space, ReactionActionSpaceA):
                 all_molecules.add(state.molecule)
             elif isinstance(action_space, ReactionActionSpaceB):
-                all_molecules_reactions.add((state.molecule, state.reaction.reaction))
+                all_molecules_reactions.add((state.molecule, state.reaction))
             elif isinstance(action_space, ReactionActionSpaceC):
                 for action in action_space.possible_actions:
                     all_molecules.add(action.output_molecule)
 
         molecule_to_idx = {molecule: idx for idx, molecule in enumerate(all_molecules)}
-        molecule_reaction_to_idx = {
+        molecule_and_reaction_to_idx = {
             molecule_reaction: idx + len(molecule_to_idx)
             for idx, molecule_reaction in enumerate(all_molecules_reactions)
         }
@@ -277,18 +277,17 @@ class ReactionForwardPolicy(
         molecule_graphs = [
             mol2graph(mol.rdkit_mol if mol else None) for mol in molecule_to_idx.keys()
         ]
-        molecule_cond = [one_hot(0, len(self.reactions))] * len(molecule_to_idx)
+        reaction_cond = [one_hot(0, len(self.reactions))] * len(molecule_to_idx)
 
-        molecule_reaction_graphs = [
-            mol2graph(mol.rdkit_mol) for mol, _ in molecule_reaction_to_idx.keys()
+        molecule_and_reaction_graphs = [
+            mol2graph(mol.rdkit_mol) for mol, _ in molecule_and_reaction_to_idx.keys()
         ]
-        molecule_reaction_cond = [
-            one_hot(self.reaction_to_idx[r], len(self.reactions))
-            for _, r in molecule_reaction_to_idx.keys()
+        molecule_and_reaction_cond = [
+            one_hot(r.idx, len(self.reactions)) for _, r in molecule_and_reaction_to_idx.keys()
         ]
 
-        graphs = molecule_graphs + molecule_reaction_graphs
-        conds = molecule_cond + molecule_reaction_cond
+        graphs = molecule_graphs + molecule_and_reaction_graphs
+        conds = reaction_cond + molecule_and_reaction_cond
 
         graph_batch = mols2batch(graphs).to(self.device)
         cond_batch = torch.tensor(conds).float().to(self.device)
@@ -296,7 +295,7 @@ class ReactionForwardPolicy(
         embeddings = self.gnn(graph_batch, cond_batch)
         return SharedEmbeddings(
             molecule_to_idx=molecule_to_idx,
-            molecule_reaction_to_idx=molecule_reaction_to_idx,
+            molecule_reaction_to_idx=molecule_and_reaction_to_idx,
             all_embeddings=embeddings,
         )
 

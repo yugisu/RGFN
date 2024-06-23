@@ -1,8 +1,8 @@
-from typing import Any, Dict, List, Tuple, cast
+from typing import Any, Dict, List, Tuple
 
 import gin
 from rdkit import Chem, RDLogger
-from rdkit.Chem import AllChem, Mol
+from rdkit.Chem import Mol, MolToSmiles
 
 from rgfn.api.env_base import EnvBase, TState
 from rgfn.gfns.reaction_gfn.api.reaction_api import (
@@ -28,10 +28,7 @@ from rgfn.gfns.reaction_gfn.api.reaction_api import (
     ReactionStateEarlyTerminal,
     ReactionStateTerminal,
 )
-from rgfn.gfns.reaction_gfn.api.reaction_data_factory import (
-    ReactionDataFactory,
-    canonicalize,
-)
+from rgfn.gfns.reaction_gfn.api.reaction_data_factory import ReactionDataFactory
 
 RDLogger.DisableLog("rdApp.*")
 
@@ -45,38 +42,35 @@ class ReactionEnv(EnvBase[ReactionState, ReactionActionSpace, ReactionAction]):
         self.fragments = data_factory.get_fragments()
         self.max_num_reaction = max_num_reactions
         self._cache: Dict[Tuple[str, int], bool] = {}
+        self._cache_size = 100000000
         self._additional_backward_cache: Dict[Any, Any] = {}
         self._additional_backward_cache_size = 100000
 
         self.all_actions_0 = tuple(
-            ReactionAction0(fragment=Molecule(f, idx=i), idx=i)
-            for i, f in enumerate(self.fragments)
+            ReactionAction0(fragment=f, idx=i) for i, f in enumerate(self.fragments)
         )
-        self.all_actions_a = [
-            ReactionActionA(reaction=Reaction(r, idx=i), idx=i)
-            for i, r in enumerate(self.reactions)
-        ]
-        self.all_actions_a.append(ReactionActionA(reaction=None, idx=len(self.reactions)))
-        cast(List[ReactionActionA], self.all_actions_a)
-        self.all_actions_a = tuple(self.all_actions_a)
-        self.all_actions_b = tuple(
-            ReactionActionB(fragment=Molecule(f, idx=i), idx=i)
-            for i, f in enumerate(self.fragments)
-        )
-        self.compatible_fragments: Dict[str, List[str]] = {}
-        self.compatible_indices: Dict[str, List[int]] = {}
-        self.fragments = [action.fragment.smiles for action in self.all_actions_0]
-        for reaction in self.reactions:
-            self.compatible_fragments[reaction] = []
-            self.compatible_indices[reaction] = []
-            pattern = Chem.MolFromSmarts(reaction.split(" >> ")[0].split(".")[1])
-            for i, fragment in enumerate(self.fragments):
-                if Chem.MolFromSmiles(fragment).HasSubstructMatch(pattern):
-                    self.compatible_fragments[reaction].append(fragment)
-                    self.compatible_indices[reaction].append(i)
 
-        self.reaction2index = {r: i for i, r in enumerate(self.reactions)}
-        self.fragment2index = {f: i for i, f in enumerate(self.fragments)}
+        self.all_actions_a = tuple(
+            ReactionActionA(reaction=r, idx=i) for i, r in enumerate(self.reactions)
+        ) + (
+            ReactionActionA(reaction=None, idx=len(self.reactions)),
+        )
+
+        self.all_actions_b = tuple(
+            ReactionActionB(fragment=f, idx=i) for i, f in enumerate(self.fragments)
+        )
+
+        self.reaction_to_compatible_fragments: Dict[Reaction, List[Molecule]] = {}
+
+        for reaction in self.reactions:
+            self.reaction_to_compatible_fragments[reaction] = []
+            pattern = reaction.left_side_rdkit_patterns[1]
+            for i, fragment in enumerate(self.fragments):
+                if fragment.rdkit_mol.HasSubstructMatch(pattern):
+                    self.reaction_to_compatible_fragments[reaction].append(fragment)
+
+        self.smiles_to_fragment_idx = {fragment.smiles: fragment.idx for fragment in self.fragments}
+        self.fragment_smiles_set = set(self.smiles_to_fragment_idx.keys())
 
         self.forward_action_space_dict = {
             ReactionState0: self._get_forward_action_spaces_0,
@@ -128,13 +122,13 @@ class ReactionEnv(EnvBase[ReactionState, ReactionActionSpace, ReactionAction]):
         if state.num_reactions < self.max_num_reaction:
             mol = state.molecule.rdkit_mol
             for i, action in enumerate(self.all_actions_a[:-1]):
-                reaction = action.reaction.reaction
-                pattern = Chem.MolFromSmarts(reaction.split(" >> ")[0].split(".")[0])
+                reaction = action.reaction
+                pattern = reaction.left_side_rdkit_patterns[0]
                 if not mol.HasSubstructMatch(pattern):
                     continue
-                pattern = Chem.MolFromSmarts(reaction.split(" >> ")[0].split(".")[1])
-                for fragment in self.compatible_fragments[reaction]:
-                    if Chem.MolFromSmiles(fragment).HasSubstructMatch(pattern):
+                pattern = reaction.left_side_rdkit_patterns[1]
+                for fragment in self.reaction_to_compatible_fragments[reaction]:
+                    if fragment.rdkit_mol.HasSubstructMatch(pattern):
                         mask[i] = True
                         break
 
@@ -146,7 +140,8 @@ class ReactionEnv(EnvBase[ReactionState, ReactionActionSpace, ReactionAction]):
         self, state: ReactionStateB
     ) -> ReactionActionSpaceB | ReactionActionSpaceEarlyTerminate:
         possible_actions = [
-            self.all_actions_b[i] for i in self.compatible_indices[state.reaction.reaction]
+            self.all_actions_b[fragment.idx]
+            for fragment in self.reaction_to_compatible_fragments[state.reaction]
         ]
 
         if len(possible_actions) == 0:
@@ -157,30 +152,29 @@ class ReactionEnv(EnvBase[ReactionState, ReactionActionSpace, ReactionAction]):
     def _get_forward_action_spaces_c(
         self, state: ReactionStateC
     ) -> ReactionActionSpaceC | ReactionActionSpaceEarlyTerminate:
-        reaction = state.reaction.reaction
+        reaction = state.reaction
         reactants = [state.molecule.rdkit_mol, state.fragment.rdkit_mol]
-        products = AllChem.ReactionFromSmarts(reaction).RunReactants(reactants)
-        smiles_list = [Chem.MolToSmiles(mol[0]) for mol in products]
-        molecule_list = set(Molecule(smiles) for smiles in smiles_list)
+        products = reaction.rdkit_rxn.RunReactants(reactants)
 
-        disconnection = self.disconnections[self.reaction2index[reaction]]
-        dis_rxn = AllChem.ReactionFromSmarts(disconnection)
-        reactants_smiles = {state.molecule.smiles, state.fragment.smiles}
+        products_set = set(Molecule(mol[0]) for mol in products)
+        disconnection = self.disconnections[reaction.idx]
+
+        expected_reactants_smiles = {state.molecule.smiles, state.fragment.smiles}
         possible_actions = []
-        for molecule in molecule_list:
-            prev_reactants_list = dis_rxn.RunReactants([molecule.rdkit_mol])
+        for product in products_set:
+            prev_reactants_list = disconnection.rdkit_rxn.RunReactants([product.rdkit_mol])
             for prev_reactants in prev_reactants_list:
                 prev_reactants_smiles = {
-                    canonicalize(prev_reactants) for prev_reactants in prev_reactants
+                    MolToSmiles(prev_reactants) for prev_reactants in prev_reactants
                 }
-                if prev_reactants_smiles == reactants_smiles:
+                if prev_reactants_smiles == expected_reactants_smiles:
                     action = ReactionActionC(
                         input_molecule=state.molecule,
                         input_reaction=state.reaction,
                         input_fragment=state.fragment,
-                        output_molecule=molecule,
+                        output_molecule=product,
                     )
-                    self._cache[(molecule, state.num_reactions + 1)] = True
+                    self._cache[(product.smiles, state.num_reactions + 1)] = True
                     possible_actions.append(action)
                     break
 
@@ -200,57 +194,52 @@ class ReactionEnv(EnvBase[ReactionState, ReactionActionSpace, ReactionAction]):
     ) -> ReactionActionSpace0 | ReactionActionSpaceC:
         if state.num_reactions == 0:
             mask = [False] * len(self.all_actions_0)
-            fragment = state.molecule.smiles
-            mask[self.fragment2index[fragment]] = True
+            mask[self.smiles_to_fragment_idx[state.molecule.smiles]] = True
             return ReactionActionSpace0(all_actions=self.all_actions_0, possible_actions_mask=mask)
+
         if state in self._additional_backward_cache:
             return self._additional_backward_cache[state]
 
         possible_actions = []
         for reaction, disconnection in zip(self.reactions, self.disconnections):
-            rxn = AllChem.ReactionFromSmarts(disconnection)
-            products = rxn.RunReactants((state.molecule.rdkit_mol,))
-            parent_reaction_idx = self.reaction2index[reaction]
-            parent_reaction = Reaction(reaction, parent_reaction_idx)
+            products = disconnection.rdkit_rxn.RunReactants((state.molecule.rdkit_mol,))
+
             for parent_molecule, parent_fragment in products:
                 # Check if second reactant is a fragment (we are only checking the
                 # second one since we impose the order in step function).
-                if self._is_fragment(parent_fragment) and self._is_decomposable(
+                parent_fragment_smiles = MolToSmiles(parent_fragment)
+                if self._is_fragment(parent_fragment_smiles) and self._is_decomposable(
                     parent_molecule, state.num_reactions - 1
                 ):
-                    parent_molecule = Chem.MolToSmiles(parent_molecule)
-                    parent_molecule = Molecule(parent_molecule)
-
-                    parent_fragment = Chem.MolToSmiles(parent_fragment)
-                    parent_fragment_idx = self.fragment2index[parent_fragment]
-                    parent_fragment = Molecule(parent_fragment, parent_fragment_idx)
+                    parent_fragment_idx = self.smiles_to_fragment_idx[parent_fragment_smiles]
 
                     action = ReactionActionC(
-                        input_molecule=parent_molecule,
-                        input_reaction=parent_reaction,
-                        input_fragment=parent_fragment,
+                        input_molecule=Molecule(parent_molecule),
+                        input_reaction=reaction,
+                        input_fragment=self.fragments[parent_fragment_idx],
                         output_molecule=state.molecule,
                     )
 
                     reactants = [action.input_molecule.rdkit_mol, action.input_fragment.rdkit_mol]
 
-                    new_products = AllChem.ReactionFromSmarts(
-                        parent_reaction.reaction
-                    ).RunReactants(reactants)
+                    new_products = reaction.rdkit_rxn.RunReactants(reactants)
 
-                    all_product_smiles = [canonicalize(mol[0]) for mol in new_products]
-                    if canonicalize(state.molecule.smiles) in all_product_smiles:
+                    new_products_smiles = [MolToSmiles(mol[0]) for mol in new_products]
+                    if state.molecule.smiles in new_products_smiles:
                         possible_actions.append(action)
+
         action_space = ReactionActionSpaceC(possible_actions=tuple(possible_actions))
         self._additional_backward_cache[state] = action_space
         if len(self._additional_backward_cache) > self._additional_backward_cache_size:
             self._additional_backward_cache.popitem()
+        while len(self._cache) > self._cache_size:
+            self._cache.popitem()
         return action_space
 
-    def _is_fragment(self, molecule: Mol) -> bool:
-        return self.fragment2index.get(Chem.MolToSmiles(molecule)) is not None
+    def _is_fragment(self, smiles: str) -> bool:
+        return smiles in self.fragment_smiles_set
 
-    def _is_decomposable(self, molecule: Mol, n_reactions: int) -> bool:
+    def _is_decomposable(self, mol: Mol, n_reactions: int) -> bool:
         """
         Recursive helper for the decompose function. Returns true if the given Molecule
         can be disconnected fully into fragments in our library.
@@ -262,47 +251,46 @@ class ReactionEnv(EnvBase[ReactionState, ReactionActionSpace, ReactionAction]):
             each reaction. If any fragment pair can be decomposed, return true.
 
         """
+        smiles = Chem.MolToSmiles(mol)
 
-        smiles = Chem.MolToSmiles(molecule)
         if (smiles, n_reactions) in self._cache:
             return self._cache[(smiles, n_reactions)]
 
         if n_reactions == 0:
-            return self._is_fragment(molecule)
+            return self._is_fragment(smiles)
 
-        try:
-            Chem.SanitizeMol(molecule)
-        except:
-            self._cache[(smiles, n_reactions)] = False
+        molecule = Molecule(smiles)
+
+        if not molecule.valid:
+            self._cache[(molecule.smiles, n_reactions)] = False
             return False
 
         # Decompose the molecule by all reverse reactions possible.
         # If ANY of them work then return True.
         for disconnection in self.disconnections:
-            rxn = AllChem.ReactionFromSmarts(disconnection)
-            frag_pairs = rxn.RunReactants((molecule,))
+            frag_pairs = disconnection.rdkit_rxn.RunReactants((molecule.rdkit_mol,))
             for parent_molecule, parent_fragment in frag_pairs:
                 # Both fragments in the pair have to be either decomposable or a
                 # starter fragment for that pair to contain a viable parent.
-                if self._is_fragment(parent_fragment):
-                    if self._is_decomposable(parent_molecule, n_reactions - 1):
-                        self._cache[(smiles, n_reactions)] = True
-                        return True
+
+                parent_fragment_smiles = MolToSmiles(parent_fragment)
+                if self._is_fragment(parent_fragment_smiles) and self._is_decomposable(
+                    parent_molecule, n_reactions - 1
+                ):
+                    self._cache[(molecule.smiles, n_reactions)] = True
+                    return True
 
         # We were unable to find a fully decomposable fragment pair.
-        self._cache[(smiles, n_reactions)] = False
+        self._cache[(molecule.smiles, n_reactions)] = False
         return False
 
     def _get_backward_action_spaces_b(self, state: ReactionStateB) -> ReactionActionSpaceA:
         mask = [False] * len(self.all_actions_a)
-        reaction = state.reaction.reaction
-        mask[self.reaction2index[reaction]] = True
+        mask[state.reaction.idx] = True
         return ReactionActionSpaceA(all_actions=self.all_actions_a, possible_actions_mask=mask)
 
     def _get_backward_action_spaces_c(self, state: ReactionStateC) -> ReactionActionSpaceB:
-        mask = [False] * len(self.all_actions_b)
-        mask[self.fragment2index[state.fragment.smiles]] = True
-        possible_actions = (self.all_actions_b[self.fragment2index[state.fragment.smiles]],)
+        possible_actions = (self.all_actions_b[self.smiles_to_fragment_idx[state.fragment.smiles]],)
         return ReactionActionSpaceB(possible_actions=possible_actions)
 
     def _get_backward_action_spaces_terminal(

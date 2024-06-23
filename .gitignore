@@ -5,7 +5,7 @@ scripts/
 __pycache__/
 *.py[cod]
 *$py.class
-
+*.pkl.gz
 # C extensions
 *.so
 

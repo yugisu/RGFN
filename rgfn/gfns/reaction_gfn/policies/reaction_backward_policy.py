@@ -39,7 +39,7 @@ from rgfn.shared.policies.uniform_policy import TIndexedActionSpace
 
 @dataclass(frozen=True)
 class SharedEmbeddings:
-    molecule_reaction_to_idx: Dict[Tuple[Molecule, Reaction], int]
+    molecule_and_reaction_to_idx: Dict[Tuple[Molecule, Reaction], int]
     all_embeddings: TensorType[float]
 
 
@@ -112,8 +112,8 @@ class ReactionBackwardPolicy(
         embedding_indices_list = []
         for action_space in action_spaces:
             embedding_indices = [
-                shared_embeddings.molecule_reaction_to_idx[
-                    (action.input_molecule, action.input_reaction.reaction)
+                shared_embeddings.molecule_and_reaction_to_idx[
+                    (action.input_molecule, action.input_reaction)
                 ]
                 for action in action_space.possible_actions
             ]
@@ -152,28 +152,25 @@ class ReactionBackwardPolicy(
         for state, action_space in zip(states, action_spaces):
             if isinstance(action_space, ReactionActionSpaceC):
                 for action in action_space.possible_actions:
-                    all_molecules_reactions.add(
-                        (action.input_molecule, action.input_reaction.reaction)
-                    )
+                    all_molecules_reactions.add((action.input_molecule, action.input_reaction))
 
-        molecule_reaction_to_idx = {
+        molecule_and_reaction_to_idx = {
             molecule_reaction: idx for idx, molecule_reaction in enumerate(all_molecules_reactions)
         }
 
-        molecule_reaction_graphs = [
-            mol2graph(mol.rdkit_mol) for mol, _ in molecule_reaction_to_idx.keys()
+        molecule_graphs = [
+            mol2graph(mol.rdkit_mol) for mol, _ in molecule_and_reaction_to_idx.keys()
         ]
-        molecule_reaction_cond = [
-            one_hot(self.reaction_to_idx[r], len(self.reactions))
-            for _, r in molecule_reaction_to_idx.keys()
+        reaction_cond = [
+            one_hot(r.idx, len(self.reactions)) for _, r in molecule_and_reaction_to_idx.keys()
         ]
 
-        graphs = molecule_reaction_graphs
-        conds = molecule_reaction_cond
+        graphs = molecule_graphs
+        conds = reaction_cond
 
         if len(graphs) == 0:
             return SharedEmbeddings(
-                molecule_reaction_to_idx=molecule_reaction_to_idx,
+                molecule_and_reaction_to_idx=molecule_and_reaction_to_idx,
                 all_embeddings=torch.tensor([], dtype=torch.float).to(self.device),
             )
         graph_batch = mols2batch(graphs).to(self.device)
@@ -181,7 +178,7 @@ class ReactionBackwardPolicy(
 
         embeddings = self.gnn(graph_batch, cond_batch)
         return SharedEmbeddings(
-            molecule_reaction_to_idx=molecule_reaction_to_idx, all_embeddings=embeddings
+            molecule_and_reaction_to_idx=molecule_and_reaction_to_idx, all_embeddings=embeddings
         )
 
     def parameters(self, recurse: bool = True) -> Iterator[Parameter]:
