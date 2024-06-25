@@ -3,6 +3,9 @@ from pathlib import Path
 from typing import Any, Dict, List, Set
 
 import gin
+import numpy as np
+from numpy import mean
+from rdkit.Chem.QED import qed
 from rdkit.Chem.Scaffolds.MurckoScaffold import MurckoScaffoldSmiles
 
 from rgfn.api.trajectories import Trajectories
@@ -14,19 +17,42 @@ from rgfn.trainer.metrics.metric_base import MetricsBase
 
 
 @gin.configurable()
+class QED(MetricsBase):
+    def compute_metrics(self, trajectories: Trajectories) -> Dict[str, float]:
+        terminal_states = trajectories.get_last_states_flat()
+        qed_scores_list = []
+        for state in terminal_states:
+            if isinstance(state, ReactionStateTerminal):
+                qed_score = qed(state.molecule.rdkit_mol)
+                qed_scores_list.append(qed_score)
+        return {"qed": np.mean(qed_scores_list)}
+
+
+@gin.configurable()
 class NumScaffoldsFound(MetricsBase):
-    def __init__(self, proxy_value_threshold_list: List[float], proxy_higher_better: bool = True):
+    def __init__(
+        self,
+        proxy_value_threshold_list: List[float],
+        proxy_component_name: str | None,
+        proxy_higher_better: bool = True,
+    ):
         super().__init__()
         self.proxy_value_threshold_list = proxy_value_threshold_list
         self.proxy_higher_better = proxy_higher_better
         self.threshold_to_set: Dict[float, Set[str]] = {
             threshold: set() for threshold in proxy_value_threshold_list
         }
+        self.proxy_component_name = proxy_component_name
 
     def compute_metrics(self, trajectories: Trajectories) -> Dict[str, float]:
         reward_outputs = trajectories.get_reward_outputs()
         terminal_states = trajectories.get_last_states_flat()
-        for state, proxy_value in zip(terminal_states, reward_outputs.proxy):
+        values = (
+            reward_outputs.proxy
+            if self.proxy_component_name is None
+            else reward_outputs.proxy_components[self.proxy_component_name]
+        )
+        for state, proxy_value in zip(terminal_states, values):
             for threshold in self.proxy_value_threshold_list:
                 if (self.proxy_higher_better and proxy_value.item() > threshold) or (
                     not self.proxy_higher_better and proxy_value.item() < threshold

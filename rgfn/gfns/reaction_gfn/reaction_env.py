@@ -159,15 +159,13 @@ class ReactionEnv(EnvBase[ReactionState, ReactionActionSpace, ReactionAction]):
         products_set = set(Molecule(mol[0]) for mol in products)
         disconnection = self.disconnections[reaction.idx]
 
-        expected_reactants_smiles = {state.molecule.smiles, state.fragment.smiles}
+        expected_reactants = {state.molecule, state.fragment}
         possible_actions = []
         for product in products_set:
             prev_reactants_list = disconnection.rdkit_rxn.RunReactants([product.rdkit_mol])
             for prev_reactants in prev_reactants_list:
-                prev_reactants_smiles = {
-                    MolToSmiles(prev_reactants) for prev_reactants in prev_reactants
-                }
-                if prev_reactants_smiles == expected_reactants_smiles:
+                prev_reactants = {Molecule(prev_reactants) for prev_reactants in prev_reactants}
+                if prev_reactants == expected_reactants:
                     action = ReactionActionC(
                         input_molecule=state.molecule,
                         input_reaction=state.reaction,
@@ -207,25 +205,25 @@ class ReactionEnv(EnvBase[ReactionState, ReactionActionSpace, ReactionAction]):
             for parent_molecule, parent_fragment in products:
                 # Check if second reactant is a fragment (we are only checking the
                 # second one since we impose the order in step function).
-                parent_fragment_smiles = MolToSmiles(parent_fragment)
+                parent_fragment_smiles = Molecule(parent_fragment).smiles
                 if self._is_fragment(parent_fragment_smiles) and self._is_decomposable(
                     parent_molecule, state.num_reactions - 1
                 ):
                     parent_fragment_idx = self.smiles_to_fragment_idx[parent_fragment_smiles]
+                    parent_fragment_mol = self.fragments[parent_fragment_idx]
+                    parent_molecule_mol = Molecule(parent_molecule)
 
-                    action = ReactionActionC(
-                        input_molecule=Molecule(parent_molecule),
-                        input_reaction=reaction,
-                        input_fragment=self.fragments[parent_fragment_idx],
-                        output_molecule=state.molecule,
-                    )
-
-                    reactants = [action.input_molecule.rdkit_mol, action.input_fragment.rdkit_mol]
-
+                    reactants = [parent_molecule_mol.rdkit_mol, parent_fragment_mol.rdkit_mol]
                     new_products = reaction.rdkit_rxn.RunReactants(reactants)
+                    new_products_mols = [Molecule(mol[0]) for mol in new_products]
 
-                    new_products_smiles = [MolToSmiles(mol[0]) for mol in new_products]
-                    if state.molecule.smiles in new_products_smiles:
+                    if state.molecule in new_products_mols:
+                        action = ReactionActionC(
+                            input_molecule=parent_molecule_mol,
+                            input_reaction=reaction,
+                            input_fragment=parent_fragment_mol,
+                            output_molecule=state.molecule,
+                        )
                         possible_actions.append(action)
 
         action_space = ReactionActionSpaceC(possible_actions=tuple(possible_actions))
@@ -251,15 +249,14 @@ class ReactionEnv(EnvBase[ReactionState, ReactionActionSpace, ReactionAction]):
             each reaction. If any fragment pair can be decomposed, return true.
 
         """
-        smiles = Chem.MolToSmiles(mol)
 
-        if (smiles, n_reactions) in self._cache:
-            return self._cache[(smiles, n_reactions)]
+        molecule = Molecule(mol)
+
+        if (molecule.smiles, n_reactions) in self._cache:
+            return self._cache[(molecule.smiles, n_reactions)]
 
         if n_reactions == 0:
-            return self._is_fragment(smiles)
-
-        molecule = Molecule(smiles)
+            return self._is_fragment(molecule.smiles)
 
         if not molecule.valid:
             self._cache[(molecule.smiles, n_reactions)] = False
@@ -273,7 +270,7 @@ class ReactionEnv(EnvBase[ReactionState, ReactionActionSpace, ReactionAction]):
                 # Both fragments in the pair have to be either decomposable or a
                 # starter fragment for that pair to contain a viable parent.
 
-                parent_fragment_smiles = MolToSmiles(parent_fragment)
+                parent_fragment_smiles = Molecule(parent_fragment).smiles
                 if self._is_fragment(parent_fragment_smiles) and self._is_decomposable(
                     parent_molecule, n_reactions - 1
                 ):

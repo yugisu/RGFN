@@ -36,7 +36,7 @@ class SenoProxy(CachedProxyBase[ReactionState]):
         return True
 
     @torch.no_grad()
-    def _compute_proxy_output(self, states: List[TState]) -> List[float]:
+    def _compute_proxy_output(self, states: List[ReactionState]) -> List[float]:
         smiles = [state.molecule.smiles for state in states]
 
         with pipes():

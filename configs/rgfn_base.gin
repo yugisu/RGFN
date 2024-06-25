@@ -1,7 +1,7 @@
 import gin_config
 import rgfn
 
-include 'configs/users/michal.gin'
+user_root_dir = 'experiments'
 include 'configs/loggers/wandb.gin'
 include 'configs/samplers/random.gin'
 include 'configs/rewards/exponential.gin'
@@ -17,10 +17,11 @@ TrajectoryBalanceOptimizer.cls_name = 'Adam'
 TrajectoryBalanceOptimizer.lr = 0.001
 TrajectoryBalanceOptimizer.logZ_multiplier = 100.0
 
-train_metrics = [@StandardGFNMetrics(), @NumScaffoldsFound(), @UniqueMolecules(), @ProxyCalls(), @FractionEarlyTerminate()]
+train_metrics = [@StandardGFNMetrics(), @NumScaffoldsFound(), @UniqueMolecules(), @ProxyCalls(), @FractionEarlyTerminate(), @QED()]
 
 ProxyCalls.proxy = %train_proxy
 NumScaffoldsFound.proxy_value_threshold_list = [5, 6, 7, 8]
+NumScaffoldsFound.proxy_component_name = None
 UniqueMolecules.dump_every_n = 500
 UniqueMolecules.run_dir = %run_dir
 

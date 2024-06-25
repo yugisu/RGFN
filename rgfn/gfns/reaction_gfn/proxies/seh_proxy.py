@@ -191,7 +191,9 @@ class SehMoleculeProxy(CachedProxyBase[ReactionState]):
     def higher_is_better(self) -> bool:
         return True
 
-    def _compute_proxy_output(self, states: List[TState]) -> List[Dict[str, float]] | List[float]:
+    def _compute_proxy_output(
+        self, states: List[ReactionState]
+    ) -> List[Dict[str, float]] | List[float]:
         return self.model.compute_scores([state.molecule.smiles for state in states])
 
     def set_device(self, device: str):

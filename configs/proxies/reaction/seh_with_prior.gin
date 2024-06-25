@@ -1,0 +1,20 @@
+proxy/gin.singleton.constructor = @SehMoleculeProxy
+prior/gin.singleton.constructor = @ReinventPriorProxy
+
+seh_proxy = @proxy/gin.singleton()
+prior = @prior/gin.singleton()
+
+train_proxy/gin.singleton.constructor = @ComposedProxy
+ComposedProxy.aggregation = 'sum'
+ComposedProxy.proxies_dict = {
+    'seh': %seh_proxy,
+    'prior': %prior
+}
+ComposedProxy.weight_dict = {
+    'seh': 0.5,
+    'prior': 4.0,
+}
+NumScaffoldsFound.proxy_component_name = 'seh'
+
+train_proxy = @train_proxy/gin.singleton()
+valid_proxy = %train_proxy

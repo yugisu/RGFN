@@ -50,6 +50,9 @@ class ReactionDataFactory:
 
         self.fragments = [Molecule(f, idx=idx) for idx, f in enumerate(fragments_list)]
 
+        assert len(set(self.reactions)) == len(self.reactions)
+        assert len(set(self.fragments)) == len(self.fragments)
+
         print(f"Using {len(self.fragments)} fragments from the subset.")
 
     def get_reactions(self) -> List[Reaction]:
