@@ -1,0 +1,3 @@
+proxy/gin.singleton.constructor = @QEDProxy
+train_proxy = @proxy/gin.singleton()
+valid_proxy = %train_proxy

@@ -1,0 +1,26 @@
+include 'configs/rgfn_base.gin'
+
+include 'configs/envs/reaction.gin'
+
+proxy/gin.singleton.constructor = @LLNLMproProxy
+prior/gin.singleton.constructor = @QEDProxy
+
+proxy = @proxy/gin.singleton()
+prior = @prior/gin.singleton()
+
+LLNLMproProxy.checkpoint_path = "/home/mila/m/michal.koziarski/gneprop/logs/Mpro/fold_0/version_0/checkpoints/epoch=28-step=85492.ckpt"
+
+train_proxy/gin.singleton.constructor = @ComposedProxy
+
+ComposedProxy.proxies_dict = {'score': %proxy, 'QED': %prior}
+ComposedProxy.weight_dict = {'score': 0.6, 'QED': 0.4}
+ComposedProxy.aggregation = 'sum'
+
+train_proxy = @train_proxy/gin.singleton()
+valid_proxy = %train_proxy
+
+NumScaffoldsFound.proxy_value_threshold_list = [0.6, 0.7, 0.8, 0.9]
+Reward.beta = 64
+
+TanimotoSimilarityModes.term_name = 'score'
+TanimotoSimilarityModes.proxy_term_threshold = 0.7

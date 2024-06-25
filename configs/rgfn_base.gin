@@ -17,13 +17,20 @@ TrajectoryBalanceOptimizer.cls_name = 'Adam'
 TrajectoryBalanceOptimizer.lr = 0.001
 TrajectoryBalanceOptimizer.logZ_multiplier = 100.0
 
-train_metrics = [@StandardGFNMetrics(), @NumScaffoldsFound(), @UniqueMolecules(), @ProxyCalls(), @FractionEarlyTerminate(), @QED()]
+train_metrics = [@StandardGFNMetrics(), @NumScaffoldsFound(), @UniqueMolecules(), @AllMolecules(), @FractionEarlyTerminate(), @QED(), @TanimotoSimilarityModes()]
+evaluation_step = 500
 
-ProxyCalls.proxy = %train_proxy
 NumScaffoldsFound.proxy_value_threshold_list = [5, 6, 7, 8]
 NumScaffoldsFound.proxy_component_name = None
-UniqueMolecules.dump_every_n = 500
+UniqueMolecules.dump_every_n = %evaluation_step
 UniqueMolecules.run_dir = %run_dir
+AllMolecules.dump_every_n = %evaluation_step
+AllMolecules.run_dir = %run_dir
+TanimotoSimilarityModes.run_dir = %run_dir
+TanimotoSimilarityModes.proxy = %train_proxy
+TanimotoSimilarityModes.compute_every_n = %evaluation_step
+TanimotoSimilarityModes.similarity_threshold = 0.3
+TanimotoSimilarityModes.max_modes = 1000
 
 Reward.beta = 8
 Trainer.run_dir = %run_dir
@@ -37,8 +44,6 @@ Trainer.n_iterations = 5005
 Trainer.train_forward_n_trajectories = 100
 Trainer.train_backward_n_trajectories = 0
 Trainer.train_replay_n_trajectories = 20
-Trainer.valid_n_trajectories = 100
-Trainer.valid_every_n_iterations = 500
 Trainer.logger = %logger
 Trainer.device = 'auto'
 
