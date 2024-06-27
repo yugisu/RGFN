@@ -164,6 +164,7 @@ class TanimotoSimilarityModes(MetricsBase):
         self.iterations = 0
         self.dump_path = Path(run_dir) / "modes"
         self.dump_path.mkdir(exist_ok=True, parents=True)
+        self.xlsx_path = None
 
     def _extract_top_sorted_smiles(self) -> Dict[str, float | Dict[str, float]]:
         """
@@ -284,7 +285,8 @@ class TanimotoSimilarityModes(MetricsBase):
 
             if len(modes) > 0:
                 df = self._modes_to_df(modes)
-                self._save_modes_xlsx(df, self.dump_path / f"modes_{self.iterations}.xlsx")
+                self.xlsx_path = self.dump_path / f"modes_{self.iterations}.xlsx"
+                self._save_modes_xlsx(df, self.xlsx_path)
 
             self.iterations += 1
 
@@ -293,6 +295,14 @@ class TanimotoSimilarityModes(MetricsBase):
             self.iterations += 1
 
             return {}
+
+    def collect_files(self) -> List[Path | str]:
+        if self.xlsx_path is None:
+            return []
+        else:
+            result = [self.xlsx_path]
+            self.xlsx_path = None
+            return result
 
 
 @gin.configurable()

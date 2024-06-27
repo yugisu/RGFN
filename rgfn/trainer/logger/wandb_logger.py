@@ -1,6 +1,6 @@
 import pickle
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 import gin
 import wandb
@@ -68,6 +68,10 @@ class WandbLogger(LoggerBase):
 
     def log_config(self, config: Dict[str, Any]):
         self.run.config.update(config)
+
+    def log_files(self, file_paths: List[Path | str]):
+        for file_path in file_paths:
+            self.run.save(str(file_path))
 
     def close(self):
         self.run.finish()

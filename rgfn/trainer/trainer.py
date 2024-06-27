@@ -289,6 +289,7 @@ class Trainer(Generic[TState, TActionSpace, TAction]):
             artifacts = self.train_artifacts.compute_artifacts(trajectories=trajectories)
             for artifact in artifacts:
                 self.logger.log_to_file(content=artifact.content, name=artifact.name)
+            self.logger.log_files(self.train_metrics.collect_files())
 
             if (
                 (i > 0 and i % self.valid_every_n_iterations == 0)

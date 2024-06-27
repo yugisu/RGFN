@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Sequence
+from pathlib import Path
+from typing import Any, Dict, List, Sequence
 
 from rgfn.api.trajectories import Trajectories
 
@@ -13,6 +14,9 @@ class MetricsBase(ABC):
     def compute_metrics(self, trajectories: Trajectories) -> Dict[str, Any]:
         ...
 
+    def collect_files(self) -> List[Path | str]:
+        return []
+
 
 class MetricsList(MetricsBase):
     def __init__(self, metrics: Sequence[MetricsBase]):
@@ -23,3 +27,9 @@ class MetricsList(MetricsBase):
         for metric in self.metrics:
             metrics.update(metric.compute_metrics(trajectories))
         return metrics
+
+    def collect_files(self) -> List[Path | str]:
+        file_paths = []
+        for metric in self.metrics:
+            file_paths.extend(metric.collect_files())
+        return file_paths

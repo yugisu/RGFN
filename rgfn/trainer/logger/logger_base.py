@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 
 class LoggerBase(ABC):
@@ -61,6 +61,19 @@ class LoggerBase(ABC):
 
         Args:
             config: a configuration dictionary.
+
+        Returns:
+            None
+        """
+        ...
+
+    @abstractmethod
+    def log_files(self, file_paths: List[Path | str]):
+        """
+        Log the files.
+
+        Args:
+            file_paths: a list containing the paths of created files.
 
         Returns:
             None
