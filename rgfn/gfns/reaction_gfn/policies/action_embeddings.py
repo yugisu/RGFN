@@ -2,9 +2,16 @@ import abc
 import math
 from typing import List
 
+import dgl
 import gin
 import numpy as np
 import torch
+from dgllife.model import GAT, GCN
+from dgllife.utils import (
+    CanonicalAtomFeaturizer,
+    CanonicalBondFeaturizer,
+    SMILESToBigraph,
+)
 from rdkit import Chem, DataStructs
 from rdkit.Chem import MACCSkeys
 from rdkit.Chem.rdMolDescriptors import GetMorganFingerprintAsBitVect
@@ -25,6 +32,10 @@ class FragmentEmbeddingBase(abc.ABC, nn.Module):
     def get_embeddings(self) -> TensorType[float]:
         pass
 
+    @abc.abstractmethod
+    def set_device(self, device: str):
+        pass
+
 
 @gin.configurable()
 class FragmentOneHotEmbedding(FragmentEmbeddingBase):
@@ -38,6 +49,9 @@ class FragmentOneHotEmbedding(FragmentEmbeddingBase):
     def get_embeddings(self) -> TensorType[float]:
         return self.weights
 
+    def set_device(self, device):
+        self.to(device)
+
 
 @gin.configurable()
 class FragmentFingerprintEmbedding(FragmentEmbeddingBase):
@@ -48,6 +62,7 @@ class FragmentFingerprintEmbedding(FragmentEmbeddingBase):
         random_linear_compression: bool,
         hidden_dim: int = 64,
         one_hot_weight: float = 1.0,
+        linear_embedding: bool = True,
     ):
         super().__init__(data_factory, hidden_dim)
         self.fingerprint_list = fingerprint_list
@@ -65,14 +80,19 @@ class FragmentFingerprintEmbedding(FragmentEmbeddingBase):
             self.all_fingerprints = torch.matmul(
                 self.all_fingerprints, random_projection
             )  # (num_fragments, hidden_dim)
-        self.all_fingerprints = nn.Parameter(self.all_fingerprints, requires_grad=False)
-        self.linear = nn.Linear(self.all_fingerprints.shape[-1], hidden_dim)
+        if linear_embedding:
+            self.fp_embedding = nn.Linear(self.all_fingerprints.shape[-1], hidden_dim)
+        else:
+            self.fp_embedding = nn.Sequential(
+                nn.Linear(self.all_fingerprints.shape[-1], hidden_dim),
+                nn.GELU(),
+                nn.Linear(hidden_dim, hidden_dim),
+            )
 
     def _get_fingerprints(self) -> TensorType[float]:
         fps_list = []
-        for smiles in self.fragments:
-            mol = Chem.MolFromSmiles(smiles)
-            Chem.RemoveHs(mol)
+        for molecule in self.fragments:
+            mol = molecule.rdkit_mol
             for fp_type in self.fingerprint_list:
                 fps = []
                 if fp_type == "maccs":
@@ -93,7 +113,88 @@ class FragmentFingerprintEmbedding(FragmentEmbeddingBase):
         return torch.tensor(fps_numpy).float()
 
     def get_embeddings(self) -> TensorType[float]:
-        fingerprints = self.linear(self.all_fingerprints)
+        fingerprints = self.fp_embedding(self.all_fingerprints)
         if self.one_hot_weight > 0:
             return fingerprints + self.one_hot_weight * self.one_hot
         return fingerprints
+
+    def set_device(self, device):
+        self.all_fingerprints = self.all_fingerprints.to(device)
+        self.to(device)
+
+
+@gin.configurable()
+class FragmentGNNEmbedding(FragmentEmbeddingBase):
+    def __init__(
+        self,
+        data_factory: ReactionDataFactory,
+        hidden_dim: int,
+        gnn_type: str,
+        num_layers: int,
+        linear_embedding: bool,
+        one_hot_weight: float = 1.0,
+    ):
+        super().__init__(data_factory, hidden_dim)
+        self.node_featurizer = CanonicalAtomFeaturizer()
+        self.edge_featurizer = CanonicalBondFeaturizer(self_loop=True)
+        self.smiles_to_graph = SMILESToBigraph(
+            node_featurizer=self.node_featurizer,
+            edge_featurizer=self.edge_featurizer,
+            add_self_loop=True,
+        )
+        self.gnn_type = gnn_type
+        if gnn_type == "gat":
+            self.gnn = GAT(
+                in_feats=self.node_featurizer.feat_size(),
+                hidden_feats=[hidden_dim] * num_layers,
+            )
+        elif gnn_type == "gcn":
+            self.gnn = GCN(
+                in_feats=self.node_featurizer.feat_size(),
+                hidden_feats=[hidden_dim] * num_layers,
+            )
+        if linear_embedding:
+            self.final_embedding = nn.Linear(hidden_dim, hidden_dim)
+        else:
+            self.final_embedding = nn.Sequential(
+                nn.Linear(hidden_dim, hidden_dim),
+                nn.GELU(),
+                nn.Linear(hidden_dim, hidden_dim),
+            )
+
+        self.one_hot_weight = one_hot_weight
+        self.one_hot = nn.Parameter(
+            torch.empty(len(self.fragments), hidden_dim), requires_grad=True
+        )
+        init.kaiming_uniform_(self.one_hot, a=math.sqrt(5))
+
+        self.batch = self._get_graph_batch()
+
+    def _get_graph_batch(self) -> dgl.DGLGraph:
+        graphs = []
+        for molecule in self.fragments:
+            graph = self.smiles_to_graph(molecule.smiles)
+            graphs.append(graph)
+        return dgl.batch(graphs)
+
+    def get_embeddings(self) -> TensorType[float]:
+        node_embeddings = self.gnn(self.batch, self.batch.ndata["h"])
+        graph_embeddings = torch.zeros(
+            size=(len(self.fragments), self.hidden_dim),
+            dtype=torch.float32,
+            device=node_embeddings.device,
+        )
+        num_nodes = self.batch.batch_num_nodes()
+        indices = torch.arange(len(num_nodes), device=num_nodes.device)
+        index = torch.repeat_interleave(indices, num_nodes).long()
+        graph_embeddings = torch.index_add(
+            input=graph_embeddings, index=index, dim=0, source=node_embeddings
+        )
+        graph_embeddings = self.final_embedding(graph_embeddings)
+        if self.one_hot_weight > 0:
+            return graph_embeddings + self.one_hot_weight * self.one_hot
+        return graph_embeddings
+
+    def set_device(self, device):
+        self.batch = self.batch.to(device)
+        self.to(device)

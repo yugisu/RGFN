@@ -1,5 +1,6 @@
 data/
 scripts/
+configs/grid_search
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

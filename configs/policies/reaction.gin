@@ -1,9 +1,7 @@
+hidden_dim = 64
+ReactionForwardPolicy = %hidden_dim
 ReactionForwardPolicy.data_factory = %data_factory
 ReactionBackwardPolicy.data_factory = %data_factory
-
-FragmentOneHotEmbedding.data_factory = %data_factory
-action_embedding_fn/gin.singleton.constructor = @FragmentOneHotEmbedding
-action_embedding_fn = @action_embedding_fn/gin.singleton()
 
 ReactionForwardPolicy.action_embedding_fn = %action_embedding_fn
 forward_policy/gin.singleton.constructor = @ReactionForwardPolicy

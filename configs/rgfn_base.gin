@@ -6,6 +6,7 @@ include 'configs/loggers/wandb.gin'
 include 'configs/samplers/random.gin'
 include 'configs/rewards/exponential.gin'
 include 'configs/policies/reaction.gin'
+include 'configs/policies/action_embeddings/one_hot.gin'
 include 'configs/objectives/trajectory_balance.gin'
 include 'configs/replay_buffers/reward_prioritized.gin'
 
@@ -13,6 +14,7 @@ run_dir = @run_dir/get_str()
 run_dir/get_str.format = '{}/{}'
 run_dir/get_str.values = [%user_root_dir, %run_name]
 
+Reward.beta = 8
 TrajectoryBalanceOptimizer.cls_name = 'Adam'
 TrajectoryBalanceOptimizer.lr = 0.001
 TrajectoryBalanceOptimizer.logZ_multiplier = 100.0
@@ -32,7 +34,6 @@ TanimotoSimilarityModes.compute_every_n = %evaluation_step
 TanimotoSimilarityModes.similarity_threshold = 0.3
 TanimotoSimilarityModes.max_modes = 1000
 
-Reward.beta = 8
 Trainer.run_dir = %run_dir
 Trainer.train_forward_sampler = %train_forward_sampler
 Trainer.train_replay_buffer = %train_replay_buffer
@@ -46,18 +47,3 @@ Trainer.train_backward_n_trajectories = 0
 Trainer.train_replay_n_trajectories = 20
 Trainer.logger = %logger
 Trainer.device = 'auto'
-
-WandbLogger.mode = 'online'
-
-ExploratoryPolicy.first_policy_weight = 0.95
-TrajectoryBalanceObjective.z_dim = 16
-
-linear_output = False
-ReactionForwardPolicy.linear_output = %linear_output
-ReactionBackwardPolicy.linear_output = %linear_output
-
-FragmentFingerprintEmbedding.data_factory = %data_factory
-action_embedding_fn/gin.singleton.constructor = @FragmentOneHotEmbedding
-FragmentFingerprintEmbedding.random_linear_compression = False
-FragmentFingerprintEmbedding.fingerprint_list = ['maccs']
-FragmentFingerprintEmbedding.one_hot_weight = 1.0

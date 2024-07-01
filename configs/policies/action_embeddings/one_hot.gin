@@ -1,0 +1,4 @@
+FragmentOneHotEmbedding.data_factory = %data_factory
+FragmentOneHotEmbedding.hidden_dim = %hidden_dim
+action_embedding_fn/gin.singleton.constructor = @FragmentOneHotEmbedding
+action_embedding_fn = @action_embedding_fn/gin.singleton()

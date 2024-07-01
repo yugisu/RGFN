@@ -13,7 +13,11 @@ conda activate rgfn
 
 # If using CUDA:
 pip install torch==2.3.0 --index-url https://download.pytorch.org/whl/cu118
-pip install dgl==1.1.2 -f https://data.dgl.ai/wheels/torch-2.3/cu118/repo.html
+pip install dgl==2.2.1+cu118 -f https://data.dgl.ai/wheels/torch-2.3/cu118/repo.html
+
+# If using CPU:
+pip install torch==2.3.0 --index-url https://download.pytorch.org/whl/cpu
+pip install dgl==2.2.1 -f https://data.dgl.ai/wheels/torch-2.3/cpu/repo.html
 
 pip install -e .
 
@@ -37,10 +41,8 @@ To setup environment for REINVENT priors, run the following commands:
 
 ```bash
 pip install xxhash==3.4.1 molvs==0.1.1 tensorboard==2.16.2 tomli==2.0.1 pathos==0.3.2 numpy==1.26.4 mmpdb==2.1
-pip install torchvision --index-url https://download.pytorch.org/whl/cu118
+pip install torchvision==0.18.1+cu118 --no-deps --index-url https://download.pytorch.org/whl/cu118
 ```
-
-Note that the above installation commands will change your `torch` version to 2.3.2 and numpy version to 1.26.4.
 
 To download the code for REINVENT priors, run the following commands:
 

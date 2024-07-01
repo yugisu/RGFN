@@ -136,6 +136,7 @@ class ReactionForwardPolicy(
 
     def set_device(self, device: str):
         self.to(device)
+        self.b_action_embedding_fn.set_device(device)
         self._device = device
 
     def _forward_0(

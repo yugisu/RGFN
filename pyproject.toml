@@ -17,11 +17,9 @@ description = "RGFN: Synthesizable Molecular Generation Using GFlowNets"
 authors = ["Michał Koziarski", "Andrei Rekesh", "Dmytro Shevchuk", "Almer van der Sloot", "Piotr Gaiński", "Yoshua Bengio", "Cheng-Hao Liu", "Mike Tyers", "Robert A. Batey"]
 
 [tool.poetry.dependencies]
-torch = '2.3.0'
 torch-geometric = '2.5.3'
 torchmetrics = '1.2.0'
 torchtyping = '0.1.4'
-dgl = '1.1.2'
 dgllife = '0.3.2'
 tqdm = '4.66.1'
 wandb = '0.15.12'
