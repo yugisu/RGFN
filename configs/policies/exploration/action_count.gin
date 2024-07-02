@@ -1,0 +1,7 @@
+ExploratoryPolicy.first_policy = %forward_policy
+ExploratoryPolicy.second_policy = @ActionCountPolicy()
+ActionCountPolicy.temperature = 1.0
+
+ExploratoryPolicy.first_policy_weight = 0.95
+train_forward_policy/gin.singleton.constructor = @ExploratoryPolicy
+train_forward_policy = @train_forward_policy/gin.singleton()

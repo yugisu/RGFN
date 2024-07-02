@@ -8,6 +8,7 @@ from torchtyping import TensorType
 
 from rgfn.api.env_base import TAction, TActionSpace, TState
 from rgfn.api.policy_base import PolicyBase
+from rgfn.api.trajectories import Trajectories
 
 
 class IndexedActionSpaceBase(abc.ABC, Generic[TAction]):
@@ -106,4 +107,7 @@ class UniformPolicy(PolicyBase[TState, TIndexedActionSpace, TAction]):
         pass
 
     def clear_action_embedding_cache(self) -> None:
+        pass
+
+    def update_using_trajectories(self, trajectories: Trajectories[TState, TActionSpace, TAction]):
         pass

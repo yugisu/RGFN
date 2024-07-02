@@ -4,6 +4,7 @@ from typing import Generic, List
 from torchtyping import TensorType
 
 from rgfn.api.env_base import TAction, TActionSpace, TState
+from rgfn.api.trajectories import Trajectories
 
 
 class PolicyBase(Generic[TState, TActionSpace, TAction], ABC):
@@ -96,6 +97,19 @@ class PolicyBase(Generic[TState, TActionSpace, TAction], ABC):
         """
         Clear the action embedding cache. Some policies may embed the actions and cache the embeddings to speed up
             the computation of log probabilities.
+
+        Returns:
+            None
+        """
+        ...
+
+    @abstractmethod
+    def update_using_trajectories(self, trajectories: Trajectories[TState, TActionSpace, TAction]):
+        """
+        Update the policy using the trajectories.
+
+        Args:
+            trajectories: a batch of trajectories.
 
         Returns:
             None

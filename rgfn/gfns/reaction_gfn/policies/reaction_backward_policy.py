@@ -8,7 +8,8 @@ from torch.distributions import Categorical
 from torch.nn import Parameter
 from torchtyping import TensorType
 
-from rgfn.api.env_base import TState
+from rgfn.api.env_base import TAction, TActionSpace, TState
+from rgfn.api.trajectories import Trajectories
 from rgfn.gfns.reaction_gfn.api.reaction_api import (
     Molecule,
     Reaction,
@@ -204,4 +205,7 @@ class ReactionBackwardPolicy(
         pass
 
     def clear_sampling_cache(self) -> None:
+        pass
+
+    def update_using_trajectories(self, trajectories: Trajectories[TState, TActionSpace, TAction]):
         pass

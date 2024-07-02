@@ -3,6 +3,7 @@ from abc import ABC
 from typing import Generic, Iterator
 
 from rgfn.api.env_base import TAction, TActionSpace, TState
+from rgfn.api.sampler_base import SamplerBase
 from rgfn.api.trajectories import Trajectories
 
 
@@ -16,6 +17,10 @@ class ReplayBufferBase(ABC, Generic[TState, TActionSpace, TAction]):
         TActionSpace: The type of the action spaces.
         TAction: The type of the actions.
     """
+
+    def __init__(self, sampler: SamplerBase[TState, TActionSpace, TAction]):
+        assert sampler.env.is_reversed, "The environment should be reversed."
+        self.sampler = sampler
 
     @abc.abstractmethod
     def add_trajectories(self, trajectories: Trajectories[TState, TActionSpace, TAction]):
@@ -103,3 +108,17 @@ class ReplayBufferBase(ABC, Generic[TState, TActionSpace, TAction]):
             None
         """
         ...
+
+    def update_using_trajectories(
+        self, trajectories: Trajectories[TState, TActionSpace, TAction]
+    ) -> None:
+        """
+        Update the replay buffer using the trajectories. The replay buffer may use the trajectories to update the action counts.
+
+        Args:
+            trajectories: a `Trajectories` object containing the trajectories.
+
+        Returns:
+            None
+        """
+        self.sampler.update_using_trajectories(trajectories)

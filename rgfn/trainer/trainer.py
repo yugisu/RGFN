@@ -284,6 +284,8 @@ class Trainer(Generic[TState, TActionSpace, TAction]):
             if self.lr_scheduler is not None:
                 self.lr_scheduler.step()
 
+            self.update_using_trajectories(trajectories=trajectories)
+
             pbar.set_description(f"Loss: {objective.loss.item():.4f}")
             metrics = (
                 self.train_metrics.compute_metrics(trajectories=trajectories)
@@ -367,3 +369,24 @@ class Trainer(Generic[TState, TActionSpace, TAction]):
         if self.valid_sampler:
             self.valid_sampler.clear_action_embedding_cache()
         self.objective.clear_action_embedding_cache()
+
+    def update_using_trajectories(
+        self, trajectories: Trajectories[TState, TActionSpace, TAction]
+    ) -> None:
+        """
+        Update the forward and backward policies using the trajectories. This method is used to update the policies
+            using the trajectories obtained in the sampling process.
+
+        Args:
+            trajectories: the batch of trajectories obtained in the sampling process.
+
+        Returns:
+            None
+        """
+        self.objective.update_using_trajectories(trajectories)
+        if self.train_replay_buffer:
+            self.train_replay_buffer.update_using_trajectories(trajectories)
+        if self.train_forward_sampler:
+            self.train_forward_sampler.update_using_trajectories(trajectories)
+        if self.train_backward_sampler:
+            self.train_backward_sampler.update_using_trajectories(trajectories)

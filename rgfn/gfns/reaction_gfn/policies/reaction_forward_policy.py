@@ -9,8 +9,9 @@ from torch import nn
 from torch.distributions import Categorical
 from torchtyping import TensorType
 
-from rgfn.api.env_base import TState
+from rgfn.api.env_base import TAction, TActionSpace, TState
 from rgfn.api.policy_base import PolicyBase
+from rgfn.api.trajectories import Trajectories
 from rgfn.gfns.reaction_gfn.api.data_structures import Molecule, Reaction
 from rgfn.gfns.reaction_gfn.api.reaction_api import (
     ReactionAction,
@@ -309,4 +310,7 @@ class ReactionForwardPolicy(
         self.b_action_embedding_cache = None
 
     def clear_sampling_cache(self) -> None:
+        pass
+
+    def update_using_trajectories(self, trajectories: Trajectories[TState, TActionSpace, TAction]):
         pass

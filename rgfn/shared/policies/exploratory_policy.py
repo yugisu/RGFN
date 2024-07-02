@@ -7,6 +7,7 @@ from torchtyping import TensorType
 
 from rgfn.api.env_base import TAction, TActionSpace, TState
 from rgfn.api.policy_base import PolicyBase
+from rgfn.api.trajectories import Trajectories
 
 
 @gin.configurable()
@@ -104,3 +105,7 @@ class ExploratoryPolicy(PolicyBase[TState, TActionSpace, TAction]):
 
     def compute_states_log_flow(self, states: List[TState]) -> TensorType[float]:
         raise NotImplementedError()
+
+    def update_using_trajectories(self, trajectories: Trajectories[TState, TActionSpace, TAction]):
+        self.first_policy.update_using_trajectories(trajectories)
+        self.second_policy.update_using_trajectories(trajectories)

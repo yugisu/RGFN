@@ -35,8 +35,7 @@ class RewardPrioritizedReplayBuffer(ReplayBufferBase[THashableState, TActionSpac
         max_size: int = int(1e6),
         temperature: float = 1.0,
     ):
-        assert sampler.env.is_reversed, "The environment should be reversed."
-        self.sampler = sampler
+        super().__init__(sampler)
         self.max_size = int(max_size)
         self.states_list: List[THashableState] = []
         self.states_set: Set[THashableState] = set()

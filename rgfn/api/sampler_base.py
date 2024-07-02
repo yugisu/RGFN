@@ -129,3 +129,17 @@ class SamplerBase(ABC, Generic[TState, TActionSpace, TAction]):
            None
         """
         self.policy.clear_action_embedding_cache()
+
+    def update_using_trajectories(
+        self, trajectories: Trajectories[TState, TActionSpace, TAction]
+    ) -> None:
+        """
+        Update the policy using the trajectories. The policy may use the trajectories to update the action counts.
+
+        Args:
+            trajectories: a `Trajectories` object containing the trajectories.
+
+        Returns:
+            None
+        """
+        self.policy.update_using_trajectories(trajectories)
