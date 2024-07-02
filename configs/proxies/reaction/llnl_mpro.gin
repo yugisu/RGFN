@@ -1,4 +1,4 @@
 proxy/gin.singleton.constructor = @LLNLMproProxy
 train_proxy = @proxy/gin.singleton()
 valid_proxy = %train_proxy
-LLNLMproProxy.checkpoint_path = "/home/mila/m/michal.koziarski/gneprop/logs/Mpro/fold_0/version_0/checkpoints/epoch=28-step=85492.ckpt"
+LLNLMproProxy.checkpoint_path = "external/gneprop/models/llnl_mpro.ckpt"

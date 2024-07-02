@@ -44,7 +44,7 @@ pip install xxhash==3.4.1 molvs==0.1.1 tensorboard==2.16.2 tomli==2.0.1 pathos==
 pip install torchvision==0.18.1+cu118 --no-deps --index-url https://download.pytorch.org/whl/cu118
 ```
 
-To download the code for REINVENT priors, run the following commands:
+To download the code for REINVENT priors, run the following command:
 
 ```bash
 sh external/setup_reinvent.sh
@@ -65,6 +65,27 @@ or with apt-get:
 sudo apt-get install libxrender1
 ```
 
+### Setup GNEprop proxies
+
+Note that GNEprop is part of a not-yet published project, and access to the code and the models is restricted. In particular, you will need an access to a private github repository for the instructions below to work.
+
+To setup environment for GNEprop proxies, run the following commands:
+
+```bash
+pip install descriptastorus==2.6.1 "ray[tune]==2.31.0" ax-platform==0.4.0 matplotlib==3.9.0 seaborn==0.13.2 umap-learn==0.5.6 pytorch-lightning==1.9.5
+pip install lightning-bolts==0.7.0 --no-deps
+```
+
+To download the code for GNEprop model, run the following command:
+
+```bash
+sh external/setup_gneprop.sh
+```
+
+You also need to download the models manually from [google drive](https://drive.google.com/drive/folders/1v1kmXnxDxrMc_UrlP3ug7f6Ekfs5Z8QC) and put them inside `external/gneprop/models`. The code will look for the checkpoints in that location.
+
+Finally, note that GNEprop requires a system-wide installation of CUDA to work on GPU (loaded by, e.g., `module load cuda/11.8`).
+
 ## Train
 
 To train the RGFN using sEH proxy, run:
@@ -80,7 +101,7 @@ package that allows for lightweight models configuration along with dependency i
 
 ### API
 
-Under `gflownet.api`, the repository provides a flexible API that clearly separates the GFlowNet components. The states,
+Under `rgfn.api`, the repository provides a flexible API that clearly separates the GFlowNet components. The states,
 actions and action spaces can be represented as an arbitrary classes, which allows for easy implementation of GFlowNets
 with non-static environments (e.g. with dynamic action spaces).
 
@@ -108,13 +129,13 @@ with non-static environments (e.g. with dynamic action spaces).
 
 ### Shared
 
-Under `gflownets.shared`, the repository provides shared utilities that are used across the different GFlowNets
+Under `rgfn.shared`, the repository provides shared utilities that are used across the different GFlowNets
 implementations, e.g. Trajectory Balance Objective, Conditioned Trajectory Balance Objective, uniform policy, cached
 proxy base class, random samplers, reward_prioritized buffer, etc.
 
 ### GFNs
 
-Under `gflownets.gfns`, the repository provides the implementation of the GFlowNets.
+Under `rgfn.gfns`, the repository provides the implementation of the GFlowNets.
 
 ## Citation
 

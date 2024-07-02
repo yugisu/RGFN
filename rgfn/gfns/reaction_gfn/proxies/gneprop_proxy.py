@@ -1,10 +1,12 @@
 import abc
+import sys
 from typing import List
 
 import numpy.typing as npt
 import torch
 from wurlitzer import pipes
 
+from rgfn import ROOT_DIR
 from rgfn.api.env_base import TState
 from rgfn.gfns.reaction_gfn.api.reaction_api import (
     ReactionState,
@@ -12,10 +14,14 @@ from rgfn.gfns.reaction_gfn.api.reaction_api import (
 )
 from rgfn.shared.proxies.cached_proxy import CachedProxyBase
 
+GNEPROP_PATH = ROOT_DIR / "external" / "gneprop"
+
 
 class GNEpropProxy(CachedProxyBase[ReactionState], abc.ABC):
     def __init__(self, checkpoint_path: str, batch_size: int = 128):
         super().__init__()
+
+        sys.path.append(str(GNEPROP_PATH))
 
         from gneprop.rewards import load_model
 
