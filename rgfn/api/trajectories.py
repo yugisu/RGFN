@@ -302,7 +302,7 @@ class Trajectories(Generic[TState, TActionSpace, TAction]):
         return trajectories
 
     def masked_select(
-        self, mask: TensorType[bool]
+        self, mask: TensorType[bool] | List[bool]
     ) -> "Trajectories[TState, TActionSpace, TAction]":
         """
         Select trajectories from the batch using the mask. It is used to select only the trajectories that are not
@@ -314,6 +314,9 @@ class Trajectories(Generic[TState, TActionSpace, TAction]):
         Returns:
             a new Trajectories object containing only the selected trajectories.
         """
+        if all(mask):
+            return self
+        mask = torch.tensor(mask) if isinstance(mask, list) else mask
         trajectories: Trajectories[TState, TActionSpace, TAction] = Trajectories()
         trajectories._states_list = list(itertools.compress(self._states_list, mask))
         trajectories._forward_action_spaces_list = list(

@@ -10,18 +10,21 @@ from rgfn.gfns.reaction_gfn.api.reaction_api import (
     Reaction,
     ReactionAction,
     ReactionAction0,
+    ReactionAction0Invalid,
     ReactionActionA,
     ReactionActionB,
     ReactionActionC,
     ReactionActionEarlyTerminate,
     ReactionActionSpace,
     ReactionActionSpace0,
+    ReactionActionSpace0Invalid,
     ReactionActionSpaceA,
     ReactionActionSpaceB,
     ReactionActionSpaceC,
     ReactionActionSpaceEarlyTerminate,
     ReactionState,
     ReactionState0,
+    ReactionState0Invalid,
     ReactionStateA,
     ReactionStateB,
     ReactionStateC,
@@ -74,6 +77,7 @@ class ReactionEnv(EnvBase[ReactionState, ReactionActionSpace, ReactionAction]):
 
         self.forward_action_space_dict = {
             ReactionState0: self._get_forward_action_spaces_0,
+            ReactionState0Invalid: self._get_forward_action_spaces_0_invalid,
             ReactionStateA: self._get_forward_action_spaces_a,
             ReactionStateB: self._get_forward_action_spaces_b,
             ReactionStateC: self._get_forward_action_spaces_c,
@@ -87,17 +91,19 @@ class ReactionEnv(EnvBase[ReactionState, ReactionActionSpace, ReactionAction]):
         }
         self.forward_action_dict = {
             ReactionAction0: self._apply_forward_actions_0,
+            ReactionAction0Invalid: self._apply_forward_actions_0_invalid,
             ReactionActionA: self._apply_forward_actions_a,
             ReactionActionB: self._apply_forward_actions_b,
             ReactionActionC: self._apply_forward_actions_c,
             ReactionActionEarlyTerminate: self._apply_forward_actions_early_terminate,
         }
         self.backward_action_dict = {
-            ReactionStateA: self._apply_backward_actions_a,
-            ReactionStateB: self._apply_backward_actions_b,
-            ReactionStateC: self._apply_backward_actions_c,
-            ReactionStateTerminal: self._apply_backward_actions_terminal,
-            ReactionStateEarlyTerminal: self._apply_backward_actions_early_terminal,
+            ReactionAction0: self._apply_backward_actions_0,
+            ReactionAction0Invalid: self._apply_backward_actions_0_invalid,
+            ReactionActionA: self._apply_backward_actions_a,
+            ReactionActionB: self._apply_backward_actions_b,
+            ReactionActionC: self._apply_backward_actions_c,
+            ReactionActionEarlyTerminate: self._apply_backward_actions_early_terminate,
         }
 
     def get_forward_action_spaces(self, states: List[ReactionState]) -> List[ReactionActionSpace]:
@@ -111,6 +117,11 @@ class ReactionEnv(EnvBase[ReactionState, ReactionActionSpace, ReactionAction]):
         return ReactionActionSpace0(
             all_actions=self.all_actions_0, possible_actions_mask=[True] * len(self.all_actions_0)
         )
+
+    def _get_forward_action_spaces_0_invalid(
+        self, state: ReactionState0Invalid
+    ) -> ReactionActionSpace0Invalid:
+        return ReactionActionSpace0Invalid()
 
     def _get_forward_action_spaces_a(
         self, state: ReactionStateA
@@ -189,7 +200,7 @@ class ReactionEnv(EnvBase[ReactionState, ReactionActionSpace, ReactionAction]):
 
     def _get_backward_action_spaces_a(
         self, state: ReactionStateA
-    ) -> ReactionActionSpace0 | ReactionActionSpaceC:
+    ) -> ReactionActionSpace0 | ReactionActionSpace0Invalid | ReactionActionSpaceC:
         if state.num_reactions == 0:
             mask = [False] * len(self.all_actions_0)
             mask[self.smiles_to_fragment_idx[state.molecule.smiles]] = True
@@ -225,6 +236,10 @@ class ReactionEnv(EnvBase[ReactionState, ReactionActionSpace, ReactionAction]):
                             output_molecule=state.molecule,
                         )
                         possible_actions.append(action)
+
+        if len(possible_actions) == 0:
+            print("No backward actions found for state: {}".format(state))
+            return ReactionActionSpace0Invalid()
 
         action_space = ReactionActionSpaceC(possible_actions=tuple(possible_actions))
         self._additional_backward_cache[state] = action_space
@@ -274,6 +289,9 @@ class ReactionEnv(EnvBase[ReactionState, ReactionActionSpace, ReactionAction]):
                 if self._is_fragment(parent_fragment_smiles) and self._is_decomposable(
                     parent_molecule, n_reactions - 1
                 ):
+                    # We should check the compatibility of forward and backward reaction here
+                    # However, it's computationally expensive and we make another hack to
+                    # get rid of empty action space issue in the backward sampling process.
                     self._cache[(molecule.smiles, n_reactions)] = True
                     return True
 
@@ -317,6 +335,11 @@ class ReactionEnv(EnvBase[ReactionState, ReactionActionSpace, ReactionAction]):
     ) -> ReactionStateA:
         return ReactionStateA(molecule=action.fragment, num_reactions=0)
 
+    def _apply_forward_actions_0_invalid(
+        self, state: ReactionState0Invalid, action: ReactionAction0Invalid
+    ) -> ReactionState:
+        return state.previous_state
+
     def _apply_forward_actions_a(
         self, state: ReactionStateA, action: ReactionActionA
     ) -> ReactionStateB | ReactionStateTerminal:
@@ -353,16 +376,35 @@ class ReactionEnv(EnvBase[ReactionState, ReactionActionSpace, ReactionAction]):
     ) -> List[ReactionState]:
         new_states = []
         for state, action in zip(states, actions):
-            state_type = type(state)
-            new_state = self.backward_action_dict[state_type](state, action)
+            new_state = self.backward_action_dict[type(action)](state, action)
             new_states.append(new_state)
         return new_states
 
+    def _apply_backward_actions_0(
+        self, state: ReactionStateA, action: ReactionAction0
+    ) -> ReactionState0:
+        return ReactionState0()
+
+    def _apply_backward_actions_0_invalid(
+        self, state: ReactionState, action: ReactionAction0Invalid
+    ) -> ReactionState0Invalid:
+        return ReactionState0Invalid(previous_state=state)
+
     def _apply_backward_actions_a(
-        self, state: ReactionStateA, action: ReactionAction0 | ReactionActionC
-    ) -> ReactionState0 | ReactionStateC:
-        if isinstance(action, ReactionAction0):
-            return ReactionState0()
+        self, state: ReactionStateB | ReactionStateTerminal, action: ReactionActionA
+    ) -> ReactionStateA:
+        return ReactionStateA(molecule=state.molecule, num_reactions=state.num_reactions)
+
+    def _apply_backward_actions_b(
+        self, state: ReactionStateC, action: ReactionActionB
+    ) -> ReactionStateB:
+        return ReactionStateB(
+            molecule=state.molecule, reaction=state.reaction, num_reactions=state.num_reactions
+        )
+
+    def _apply_backward_actions_c(
+        self, state: ReactionStateA, action: ReactionActionC
+    ) -> ReactionStateC:
         return ReactionStateC(
             molecule=action.input_molecule,
             reaction=action.input_reaction,
@@ -370,25 +412,8 @@ class ReactionEnv(EnvBase[ReactionState, ReactionActionSpace, ReactionAction]):
             num_reactions=state.num_reactions - 1,
         )
 
-    def _apply_backward_actions_b(
-        self, state: ReactionStateB, action: ReactionActionA
-    ) -> ReactionStateA:
-        return ReactionStateA(molecule=state.molecule, num_reactions=state.num_reactions)
-
-    def _apply_backward_actions_c(
-        self, state: ReactionStateC, action: ReactionActionB
-    ) -> ReactionStateB:
-        return ReactionStateB(
-            molecule=state.molecule, reaction=state.reaction, num_reactions=state.num_reactions
-        )
-
-    def _apply_backward_actions_terminal(
-        self, state: ReactionStateTerminal, action: ReactionActionA
-    ) -> ReactionStateA:
-        return ReactionStateA(molecule=state.molecule, num_reactions=state.num_reactions)
-
-    def _apply_backward_actions_early_terminal(
-        self, state: ReactionStateEarlyTerminal, action: ReactionAction
+    def _apply_backward_actions_early_terminate(
+        self, state: ReactionStateEarlyTerminal, action: ReactionActionEarlyTerminate
     ) -> ReactionState:
         return state.previous_state
 
@@ -399,7 +424,7 @@ class ReactionEnv(EnvBase[ReactionState, ReactionActionSpace, ReactionAction]):
         ]
 
     def get_source_mask(self, states: List[ReactionState]) -> List[bool]:
-        return [isinstance(state, ReactionState0) for state in states]
+        return [isinstance(state, (ReactionState0, ReactionState0Invalid)) for state in states]
 
     def sample_source_states(self, n_states: int) -> List[ReactionState]:
         return [ReactionState0()] * n_states

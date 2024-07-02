@@ -47,3 +47,4 @@ Trainer.train_backward_n_trajectories = 0
 Trainer.train_replay_n_trajectories = 20
 Trainer.logger = %logger
 Trainer.device = 'auto'
+Trainer.trajectory_filter = @RGFNTrajectoryFilter()

@@ -16,6 +16,7 @@ from rgfn.gfns.reaction_gfn.api.reaction_api import (
     ReactionActionA,
     ReactionActionSpace,
     ReactionActionSpace0,
+    ReactionActionSpace0Invalid,
     ReactionActionSpaceA,
     ReactionActionSpaceB,
     ReactionActionSpaceC,
@@ -95,10 +96,11 @@ class ReactionBackwardPolicy(
         )
         self._action_space_type_to_forward_fn = {
             ReactionActionSpace0: self._forward_deterministic,
-            ReactionActionSpaceB: self._forward_deterministic,
-            ReactionActionSpaceEarlyTerminate: self._forward_deterministic,
+            ReactionActionSpace0Invalid: self._forward_deterministic,
             ReactionActionSpaceA: self._forward_deterministic,
+            ReactionActionSpaceB: self._forward_deterministic,
             ReactionActionSpaceC: self._forward_c,
+            ReactionActionSpaceEarlyTerminate: self._forward_deterministic,
         }
 
         self._device = "cpu"
@@ -135,12 +137,13 @@ class ReactionBackwardPolicy(
         action_spaces: List[ReactionActionSpace],
         shared_embeddings: SharedEmbeddings,
     ) -> TensorType[float]:
-        max_num_actions = max(
+        assert len(states) == len(action_spaces)
+        max_action_idx = max(
             action_space.get_possible_actions_indices()[0] for action_space in action_spaces
         )
         log_probs_list = []
         for action_space in action_spaces:
-            log_probs = [-float("inf")] * (max_num_actions + 1)
+            log_probs = [-float("inf")] * (max_action_idx + 1)
             log_probs[action_space.get_possible_actions_indices()[0]] = 0
             log_probs_list.append(log_probs)
         return torch.tensor(log_probs_list).float().to(self.device)

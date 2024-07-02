@@ -11,8 +11,6 @@ from .data_structures import Molecule, Reaction
 
 @dataclass(frozen=True, order=True)
 class ReactionState0:
-    pass
-
     def __repr__(self):
         return str(self)
 
@@ -53,6 +51,58 @@ class ReactionActionSpace0(IndexedActionSpaceBase[ReactionAction0]):
         possible_action_indices = self.get_possible_actions_indices()
         possible_actions = [self.all_actions[idx] for idx in possible_action_indices]
         return f"AS0({possible_actions})"
+
+
+@dataclass(frozen=True, order=True)
+class ReactionState0Invalid:
+    """
+    In our code there are some really rare cases of reactions (reactants, product, template) that cannot be reversed: 
+    they can be applied in one direction, but not in the other. The `ReactionEarlyTerminalState` is a hacky way of 
+    dealing with such cases in the forward sampling (a proper way is expensive). If we encounter a reaction that 
+    cannot be reversed, we terminate the generation process. The `ReactionState0Invalid` is a similar concept but 
+    for the backward sampling. In `ReactionEnv._is_decomposable` method we don't check if there are some 
+    irreversible reactions in the synthesis tree (it's expensive), so our backward trajectory could end up in a 
+    molecule that can only be decomposed by an irreversible reaction, which we cannot allow for the sake of the 
+    compatibility with forward sampling. At this point, we terminate the generation process and transition to 
+    `ReactionState0Invalid` state. All such invalid trajectories are then filtered from the trajectories batch.
+    """
+
+    previous_state: Any = field(hash=False, compare=False)
+
+    def __repr__(self):
+        return str(self)
+
+    def __str__(self):
+        return "S0Invalid"
+
+
+@dataclass(frozen=True)
+class ReactionAction0Invalid:
+    def __repr__(self):
+        return str(self)
+
+    def __str__(self):
+        return "A0Invalid"
+
+
+@dataclass(frozen=True)
+class ReactionActionSpace0Invalid(IndexedActionSpaceBase[ReactionAction0Invalid]):
+    possible_action = ReactionAction0Invalid()
+
+    def get_action_at_idx(self, idx: int) -> ReactionAction0Invalid:
+        return self.possible_action
+
+    def get_idx_of_action(self, action: ReactionAction0Invalid) -> int:
+        return 0
+
+    def get_possible_actions_indices(self) -> List[int]:
+        return [0]
+
+    def __repr__(self):
+        return str(self)
+
+    def __str__(self):
+        return "AS0Invalid"
 
 
 @dataclass(frozen=True, order=True)

@@ -1,3 +1,4 @@
+import abc
 from pathlib import Path
 from typing import Any, Dict, Generic, Literal, Optional, Sequence
 
@@ -18,6 +19,7 @@ from ..api.sampler_base import SamplerBase
 from .logger.dummy_logger import DummyLogger
 from .optimizers.lr_scheduler import LRScheduler
 from .optimizers.optimizer_base import OptimizerBase
+from .trajectory_filters.trajectory_filter_base import TrajectoryFilterBase
 
 
 @gin.configurable()
@@ -57,6 +59,7 @@ class Trainer(Generic[TState, TActionSpace, TAction]):
         resume_path: str | Path | None = None,
         sanity_check_evaluation: bool = False,
         device: str = "auto",
+        trajectory_filter: TrajectoryFilterBase[TState, TActionSpace, TAction] | None = None,
     ):
         """
         Args:
@@ -158,6 +161,7 @@ class Trainer(Generic[TState, TActionSpace, TAction]):
 
         self.initial_n_backward_trajectories = self.train_backward_n_trajectories
         self.sanity_check_evaluation = sanity_check_evaluation
+        self.trajectory_filter = trajectory_filter or IdentityTrajectoryFilter()
 
     def sample_training_trajectories(self) -> Trajectories[TState, TActionSpace, TAction]:
         """
@@ -271,6 +275,7 @@ class Trainer(Generic[TState, TActionSpace, TAction]):
             self.optimizer.zero_grad()
 
             trajectories = self.sample_training_trajectories()
+            trajectories = self.trajectory_filter(trajectories)
             objective = self.objective.compute_objective_output(trajectories=trajectories)
 
             objective.loss.backward()

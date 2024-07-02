@@ -18,6 +18,7 @@ from rgfn.gfns.reaction_gfn.api.reaction_api import (
     ReactionActionEarlyTerminate,
     ReactionActionSpace,
     ReactionActionSpace0,
+    ReactionActionSpace0Invalid,
     ReactionActionSpaceA,
     ReactionActionSpaceB,
     ReactionActionSpaceC,
@@ -117,6 +118,7 @@ class ReactionForwardPolicy(
             ReactionActionSpaceB: self._forward_b,
             ReactionActionSpaceC: self._forward_c,
             ReactionActionSpaceEarlyTerminate: self._forward_early_terminate,
+            ReactionActionSpace0Invalid: self._forward_early_terminate,
         }
 
         self._device = "cpu"
