@@ -1,0 +1,3 @@
+include 'configs/proxies/target/docking_base.gin'
+
+DockingMoleculeProxy.receptor_name = 'Mpro'

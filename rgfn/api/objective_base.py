@@ -161,17 +161,25 @@ class ObjectiveBase(nn.Module, ABC, Generic[TState, TActionSpace, TAction]):
         self.backward_policy.clear_action_embedding_cache()
 
     def update_using_trajectories(
-        self, trajectories: Trajectories[TState, TActionSpace, TAction]
-    ) -> None:
+        self, trajectories: Trajectories[TState, TActionSpace, TAction], update_idx: int
+    ) -> Dict[str, float]:
         """
         Update the forward and backward policies using the trajectories. This method is used to update the policies
             using the trajectories obtained in the sampling process.
 
         Args:
             trajectories: the batch of trajectories obtained in the sampling process.
+            update_idx: the index of the update. Used to avoid updating the policies multiple times with the same data.
+                The policies may be shared by other objects that can call `update_using_trajectories` in
+                `Trainer.update_using_trajectories`.
 
         Returns:
-            None
+            A dict containing the metrics.
         """
-        self.forward_policy.update_using_trajectories(trajectories)
-        self.backward_policy.update_using_trajectories(trajectories)
+        output_forward = self.forward_policy.update_using_trajectories(
+            trajectories, update_idx=update_idx
+        )
+        output_backward = self.backward_policy.update_using_trajectories(
+            trajectories, update_idx=update_idx
+        )
+        return output_forward | output_backward

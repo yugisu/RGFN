@@ -19,6 +19,7 @@ class ActionCountPolicy(PolicyBase[TState, TIndexedActionSpace, THashableAction]
         self.actions_count: Dict[THashableAction, int] = {}
         self.temperature = temperature
         self.device = "cpu"
+        self.last_update_idx = -1
 
     def _forward(self, action_spaces: List[TIndexedActionSpace]) -> TensorType[float]:
         max_action_space_size = max(
@@ -37,6 +38,7 @@ class ActionCountPolicy(PolicyBase[TState, TIndexedActionSpace, THashableAction]
             for idx, count in zip(possible_actions_indices, possible_actions_counts):
                 actions_scores[idx] = -count / total_count
             action_scores_list.append(actions_scores)
+
         logits = torch.tensor(action_scores_list, dtype=torch.float32, device=self.device)
         log_probs = torch.log_softmax(logits * self.temperature, dim=1)
         return log_probs
@@ -83,7 +85,14 @@ class ActionCountPolicy(PolicyBase[TState, TIndexedActionSpace, THashableAction]
         pass
 
     def update_using_trajectories(
-        self, trajectories: Trajectories[TState, TIndexedActionSpace, THashableAction]
-    ):
+        self,
+        trajectories: Trajectories[TState, TIndexedActionSpace, THashableAction],
+        update_idx: int,
+    ) -> Dict[str, float]:
+        if update_idx == self.last_update_idx:
+            return {}
+        self.last_update_idx = update_idx
         for action in trajectories.get_actions_flat():
             self.actions_count[action] = self.actions_count.get(action, 0) + 1
+
+        return {}

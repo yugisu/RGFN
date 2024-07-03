@@ -108,6 +108,3 @@ class UniformPolicy(PolicyBase[TState, TIndexedActionSpace, TAction]):
 
     def clear_action_embedding_cache(self) -> None:
         pass
-
-    def update_using_trajectories(self, trajectories: Trajectories[TState, TActionSpace, TAction]):
-        pass

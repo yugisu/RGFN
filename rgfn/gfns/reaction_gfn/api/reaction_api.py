@@ -56,14 +56,14 @@ class ReactionActionSpace0(IndexedActionSpaceBase[ReactionAction0]):
 @dataclass(frozen=True, order=True)
 class ReactionState0Invalid:
     """
-    In our code there are some really rare cases of reactions (reactants, product, template) that cannot be reversed: 
-    they can be applied in one direction, but not in the other. The `ReactionEarlyTerminalState` is a hacky way of 
-    dealing with such cases in the forward sampling (a proper way is expensive). If we encounter a reaction that 
-    cannot be reversed, we terminate the generation process. The `ReactionState0Invalid` is a similar concept but 
-    for the backward sampling. In `ReactionEnv._is_decomposable` method we don't check if there are some 
-    irreversible reactions in the synthesis tree (it's expensive), so our backward trajectory could end up in a 
-    molecule that can only be decomposed by an irreversible reaction, which we cannot allow for the sake of the 
-    compatibility with forward sampling. At this point, we terminate the generation process and transition to 
+    In our code there are some really rare cases of reactions (reactants, product, template) that cannot be reversed:
+    they can be applied in one direction, but not in the other. The `ReactionEarlyTerminalState` is a hacky way of
+    dealing with such cases in the forward sampling (a proper way is expensive). If we encounter a reaction that
+    cannot be reversed, we terminate the generation process. The `ReactionState0Invalid` is a similar concept but
+    for the backward sampling. In `ReactionEnv._is_decomposable` method we don't check if there are some
+    irreversible reactions in the synthesis tree (it's expensive), so our backward trajectory could end up in a
+    molecule that can only be decomposed by an irreversible reaction, which we cannot allow for the sake of the
+    compatibility with forward sampling. At this point, we terminate the generation process and transition to
     `ReactionState0Invalid` state. All such invalid trajectories are then filtered from the trajectories batch.
     """
 

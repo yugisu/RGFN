@@ -206,6 +206,3 @@ class ReactionBackwardPolicy(
 
     def clear_sampling_cache(self) -> None:
         pass
-
-    def update_using_trajectories(self, trajectories: Trajectories[TState, TActionSpace, TAction]):
-        pass

@@ -1,6 +1,0 @@
-include 'configs/rgfn_base.gin'
-
-include 'configs/envs/reaction.gin'
-include 'configs/proxies/reaction/seh_with_prior.gin'
-
-Reward.beta = 8

@@ -1,6 +1,6 @@
 import abc
 from abc import ABC
-from typing import Generic, Iterator
+from typing import Dict, Generic, Iterator
 
 from rgfn.api.env_base import TAction, TActionSpace, TState
 from rgfn.api.sampler_base import SamplerBase
@@ -110,15 +110,17 @@ class ReplayBufferBase(ABC, Generic[TState, TActionSpace, TAction]):
         ...
 
     def update_using_trajectories(
-        self, trajectories: Trajectories[TState, TActionSpace, TAction]
-    ) -> None:
+        self, trajectories: Trajectories[TState, TActionSpace, TAction], update_idx: int
+    ) -> Dict[str, float]:
         """
         Update the replay buffer using the trajectories. The replay buffer may use the trajectories to update the action counts.
 
         Args:
             trajectories: a `Trajectories` object containing the trajectories.
-
+            update_idx: the index of the update. Used to avoid updating the replay buffer multiple times with the same data.
+                The sampler may be shared by other objects that can call `update_using_trajectories` in
+                `Trainer.update_using_trajectories`.
         Returns:
-            None
+            A dict containing the metrics.
         """
-        self.sampler.update_using_trajectories(trajectories)
+        return self.sampler.update_using_trajectories(trajectories, update_idx)

@@ -5,6 +5,7 @@ from typing import Dict, Generic, List
 from torchtyping import TensorType
 
 from rgfn.api.env_base import TState
+from rgfn.api.trajectories import Trajectories
 
 
 @dataclass
@@ -70,3 +71,20 @@ class ProxyBase(Generic[TState], ABC):
             None
         """
         ...
+
+    def update_using_trajectories(
+        self, trajectories: Trajectories, update_idx: int
+    ) -> Dict[str, float]:
+        """
+        Update the proxy with the trajectories.
+
+        Args:
+            trajectories: a list of trajectories.
+            update_idx: the index of the update. Used to avoid updating the proxy multiple times with the same data.
+                The proxy may be shared by other objects that can call `update_using_trajectories` in
+                `Trainer.update_using_trajectories`.
+
+        Returns:
+            A dict containing the metrics.
+        """
+        return {}

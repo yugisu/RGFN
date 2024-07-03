@@ -1,14 +1,21 @@
-from typing import List
+from typing import Dict, List
 
 import pytest
 from torchtyping import TensorType
 
+from rgfn.api.env_base import TAction, TActionSpace, TState
 from rgfn.api.policy_base import PolicyBase
+from rgfn.api.trajectories import Trajectories
 from rgfn.shared.policies.exploratory_policy import ExploratoryPolicy
 from rgfn.utils.helpers import seed_everything
 
 
 class DeterministicPolicy(PolicyBase[int, int, int]):
+    def update_using_trajectories(
+        self, trajectories: Trajectories[TState, TActionSpace, TAction], update_idx: int
+    ) -> Dict[str, float]:
+        return {}
+
     def __init__(self, value: int):
         self.value = value
 

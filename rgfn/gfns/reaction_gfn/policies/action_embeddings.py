@@ -22,14 +22,23 @@ from torchtyping import TensorType
 from rgfn.gfns.reaction_gfn.api.reaction_data_factory import ReactionDataFactory
 
 
-class FragmentEmbeddingBase(abc.ABC, nn.Module):
+class ActionEmbeddingBase(abc.ABC, nn.Module):
     def __init__(self, data_factory: ReactionDataFactory, hidden_dim: int):
         super().__init__()
         self.hidden_dim = hidden_dim
-        self.fragments = data_factory.get_fragments()
+        self.data_factory = data_factory
+        self._cache: TensorType[float] | None = None
+
+    def get_embeddings(self) -> TensorType[float]:
+        if self._cache is None:
+            self._cache = self._get_embeddings()
+        return self._cache
+
+    def clear_cache(self):
+        self._cache = None
 
     @abc.abstractmethod
-    def get_embeddings(self) -> TensorType[float]:
+    def _get_embeddings(self) -> TensorType[float]:
         pass
 
     @abc.abstractmethod
@@ -38,15 +47,15 @@ class FragmentEmbeddingBase(abc.ABC, nn.Module):
 
 
 @gin.configurable()
-class FragmentOneHotEmbedding(FragmentEmbeddingBase):
+class FragmentOneHotEmbedding(ActionEmbeddingBase):
     def __init__(self, data_factory: ReactionDataFactory, hidden_dim: int = 64):
         super().__init__(data_factory, hidden_dim)
         self.weights = nn.Parameter(
-            torch.empty(len(self.fragments), hidden_dim), requires_grad=True
+            torch.empty(len(data_factory.get_fragments()), hidden_dim), requires_grad=True
         )
         init.kaiming_uniform_(self.weights, a=math.sqrt(5))
 
-    def get_embeddings(self) -> TensorType[float]:
+    def _get_embeddings(self) -> TensorType[float]:
         return self.weights
 
     def set_device(self, device):
@@ -54,7 +63,23 @@ class FragmentOneHotEmbedding(FragmentEmbeddingBase):
 
 
 @gin.configurable()
-class FragmentFingerprintEmbedding(FragmentEmbeddingBase):
+class ReactionsOneHotEmbedding(ActionEmbeddingBase):
+    def __init__(self, data_factory: ReactionDataFactory, hidden_dim: int = 64):
+        super().__init__(data_factory, hidden_dim)
+        self.weights = nn.Parameter(
+            torch.empty(len(data_factory.get_reactions()) + 1, hidden_dim), requires_grad=True
+        )
+        init.kaiming_uniform_(self.weights, a=math.sqrt(5))
+
+    def _get_embeddings(self) -> TensorType[float]:
+        return self.weights
+
+    def set_device(self, device):
+        self.to(device)
+
+
+@gin.configurable()
+class FragmentFingerprintEmbedding(ActionEmbeddingBase):
     def __init__(
         self,
         data_factory: ReactionDataFactory,
@@ -112,7 +137,7 @@ class FragmentFingerprintEmbedding(FragmentEmbeddingBase):
         fps_numpy = fps_numpy[:, np.any(fps_numpy, axis=0)]
         return torch.tensor(fps_numpy).float()
 
-    def get_embeddings(self) -> TensorType[float]:
+    def _get_embeddings(self) -> TensorType[float]:
         fingerprints = self.fp_embedding(self.all_fingerprints)
         if self.one_hot_weight > 0:
             return fingerprints + self.one_hot_weight * self.one_hot
@@ -124,7 +149,7 @@ class FragmentFingerprintEmbedding(FragmentEmbeddingBase):
 
 
 @gin.configurable()
-class FragmentGNNEmbedding(FragmentEmbeddingBase):
+class FragmentGNNEmbedding(ActionEmbeddingBase):
     def __init__(
         self,
         data_factory: ReactionDataFactory,

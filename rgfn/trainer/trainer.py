@@ -19,7 +19,10 @@ from ..api.sampler_base import SamplerBase
 from .logger.dummy_logger import DummyLogger
 from .optimizers.lr_scheduler import LRScheduler
 from .optimizers.optimizer_base import OptimizerBase
-from .trajectory_filters.trajectory_filter_base import TrajectoryFilterBase
+from .trajectory_filters.trajectory_filter_base import (
+    IdentityTrajectoryFilter,
+    TrajectoryFilterBase,
+)
 
 
 @gin.configurable()
@@ -284,13 +287,14 @@ class Trainer(Generic[TState, TActionSpace, TAction]):
             if self.lr_scheduler is not None:
                 self.lr_scheduler.step()
 
-            self.update_using_trajectories(trajectories=trajectories)
+            update_metrics = self.update_using_trajectories(trajectories=trajectories, update_idx=i)
 
             pbar.set_description(f"Loss: {objective.loss.item():.4f}")
             metrics = (
                 self.train_metrics.compute_metrics(trajectories=trajectories)
                 | {"loss": objective.loss.item()}
                 | objective.metrics
+                | update_metrics
             )
             self.logger.log_metrics(metrics=metrics, prefix="train")
             artifacts = self.train_artifacts.compute_artifacts(trajectories=trajectories)
@@ -371,22 +375,28 @@ class Trainer(Generic[TState, TActionSpace, TAction]):
         self.objective.clear_action_embedding_cache()
 
     def update_using_trajectories(
-        self, trajectories: Trajectories[TState, TActionSpace, TAction]
-    ) -> None:
+        self, trajectories: Trajectories[TState, TActionSpace, TAction], update_idx: int
+    ) -> Dict[str, float]:
         """
         Update the forward and backward policies using the trajectories. This method is used to update the policies
             using the trajectories obtained in the sampling process.
 
         Args:
             trajectories: the batch of trajectories obtained in the sampling process.
+            update_idx: the index of the update. Some objects may be shared by objective and samplers and their
+                `update_using_trajectories` method will be called multiple times. To avoid multiple updates using the
+                same data, we provide the underlying `update_using_trajectories` calls with `update_idx`.
 
         Returns:
-            None
+            A dict containing the metrics.
         """
-        self.objective.update_using_trajectories(trajectories)
+        output = self.objective.update_using_trajectories(trajectories, update_idx=update_idx)
         if self.train_replay_buffer:
-            self.train_replay_buffer.update_using_trajectories(trajectories)
+            output |= self.train_replay_buffer.update_using_trajectories(trajectories, update_idx)
         if self.train_forward_sampler:
-            self.train_forward_sampler.update_using_trajectories(trajectories)
+            output |= self.train_forward_sampler.update_using_trajectories(trajectories, update_idx)
         if self.train_backward_sampler:
-            self.train_backward_sampler.update_using_trajectories(trajectories)
+            output |= self.train_backward_sampler.update_using_trajectories(
+                trajectories, update_idx
+            )
+        return output

@@ -34,6 +34,7 @@ class RewardPrioritizedReplayBuffer(ReplayBufferBase[THashableState, TActionSpac
         sampler: SamplerBase[THashableState, TActionSpace, TAction],
         max_size: int = int(1e6),
         temperature: float = 1.0,
+        proxy_term: str | None = None,
     ):
         super().__init__(sampler)
         self.max_size = int(max_size)
@@ -41,6 +42,7 @@ class RewardPrioritizedReplayBuffer(ReplayBufferBase[THashableState, TActionSpac
         self.states_set: Set[THashableState] = set()
         self.proxy_value_array = np.zeros((self.max_size + 1,), dtype=np.float32)
         self.temperature = temperature
+        self.proxy_term = proxy_term
 
     def get_trajectories_iterator(
         self, n_total_trajectories: int, batch_size: int
@@ -84,7 +86,13 @@ class RewardPrioritizedReplayBuffer(ReplayBufferBase[THashableState, TActionSpac
             None
         """
         terminal_states = trajectories.get_last_states_flat()
-        proxy_value = trajectories.get_reward_outputs().proxy
+        reward_output = trajectories.get_reward_outputs()
+        proxy_value = (
+            reward_output.proxy
+            if self.proxy_term is None
+            else reward_output.proxy_components[self.proxy_term]
+        )
+
         for state, proxy_value in zip(terminal_states, proxy_value):
             if state not in self.states_set:
                 self._add_state(state, proxy_value.item())

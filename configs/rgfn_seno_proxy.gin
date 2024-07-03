@@ -1,7 +1,7 @@
 include 'configs/rgfn_base.gin'
 
 include 'configs/envs/reaction.gin'
-include 'configs/proxies/reaction/seno.gin'
+include 'configs/proxies/target/seno.gin'
 
 NumScaffoldsFound.proxy_value_threshold_list = [0.6, 0.7, 0.8, 0.9]
 Reward.beta = 48

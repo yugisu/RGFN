@@ -1,7 +1,7 @@
 import abc
 from abc import ABC
 from itertools import compress
-from typing import Generic, Iterator, List
+from typing import Dict, Generic, Iterator, List
 
 import torch
 
@@ -131,15 +131,21 @@ class SamplerBase(ABC, Generic[TState, TActionSpace, TAction]):
         self.policy.clear_action_embedding_cache()
 
     def update_using_trajectories(
-        self, trajectories: Trajectories[TState, TActionSpace, TAction]
-    ) -> None:
+        self, trajectories: Trajectories[TState, TActionSpace, TAction], update_idx: int
+    ) -> Dict[str, float]:
         """
         Update the policy using the trajectories. The policy may use the trajectories to update the action counts.
 
         Args:
             trajectories: a `Trajectories` object containing the trajectories.
-
+            update_idx: the index of the update. Used to avoid updating the policy multiple times with the same data.
+                The policy and reward may be shared by other objects that can call `update_using_trajectories` in
+                `Trainer.update_using_trajectories`.
         Returns:
-            None
+            A dict containing the metrics.
         """
-        self.policy.update_using_trajectories(trajectories)
+
+        output = self.policy.update_using_trajectories(trajectories, update_idx)
+        if self.reward is not None:
+            output |= self.reward.update_using_trajectories(trajectories, update_idx)
+        return output

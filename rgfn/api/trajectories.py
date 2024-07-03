@@ -5,7 +5,7 @@ import torch
 from torchtyping import TensorType
 
 from rgfn.api.env_base import TAction, TActionSpace, TState
-from rgfn.api.reward import RewardOutput
+from rgfn.api.reward_output import RewardOutput
 
 
 class Trajectories(Generic[TState, TActionSpace, TAction]):

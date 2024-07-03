@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Generic, List
+from typing import Dict, Generic, List
 
 from torchtyping import TensorType
 
@@ -103,15 +103,19 @@ class PolicyBase(Generic[TState, TActionSpace, TAction], ABC):
         """
         ...
 
-    @abstractmethod
-    def update_using_trajectories(self, trajectories: Trajectories[TState, TActionSpace, TAction]):
+    def update_using_trajectories(
+        self, trajectories: Trajectories[TState, TActionSpace, TAction], update_idx: int
+    ) -> Dict[str, float]:
         """
         Update the policy using the trajectories.
 
         Args:
             trajectories: a batch of trajectories.
+            update_idx: the index of the update. Used to avoid updating the policy multiple times with the same data.
+                The policy may be shared by other objects that can call `update_using_trajectories` in
+                `Trainer.update_using_trajectories`.
 
         Returns:
-            None
+            A dict containing the metrics.
         """
-        ...
+        return {}

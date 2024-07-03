@@ -5,6 +5,7 @@ import torch
 from torch import Tensor
 
 from rgfn.api.proxy_base import ProxyBase
+from rgfn.api.trajectories import Trajectories
 from rgfn.shared.proxies.cached_proxy import CachedProxyBase, THashableState
 
 
@@ -96,3 +97,12 @@ class ComposedProxy(CachedProxyBase[THashableState]):
         self.device = device
         for proxy in self.proxies_dict.values():
             proxy.set_device(device)
+
+    def update_using_trajectories(
+        self, trajectories: Trajectories, update_idx: int
+    ) -> Dict[str, float]:
+        output = {}
+        for proxy in self.proxies_dict.values():
+            output |= proxy.update_using_trajectories(trajectories, update_idx=update_idx)
+
+        return output

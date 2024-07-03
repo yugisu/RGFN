@@ -1,10 +1,11 @@
 import random
-from typing import List
+from typing import Dict, List
 
 import pytest
 import torch
 from torchtyping import TensorType
 
+from rgfn.api.env_base import TAction, TActionSpace, TState
 from rgfn.api.policy_base import PolicyBase
 from rgfn.api.proxy_base import ProxyBase, ProxyOutput
 from rgfn.api.reward import Reward
@@ -30,6 +31,11 @@ class MockProxy(ProxyBase[int]):
 
 
 class MockPolicy(PolicyBase[int, List[int], int]):
+    def update_using_trajectories(
+        self, trajectories: Trajectories[TState, TActionSpace, TAction]
+    ) -> Dict[str, float]:
+        return {}
+
     def sample_actions(self, states: List[int], action_spaces: List[List[int]]) -> List[int]:
         return [random.choice(action_space) for action_space in action_spaces]
 

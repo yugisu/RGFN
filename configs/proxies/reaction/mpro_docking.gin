@@ -1,3 +1,0 @@
-include 'configs/proxies/reaction/docking_base.gin'
-
-DockingMoleculeProxy.receptor_name = 'Mpro'

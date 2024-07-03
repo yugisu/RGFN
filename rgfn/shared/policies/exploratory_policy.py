@@ -1,5 +1,5 @@
 from itertools import compress
-from typing import List
+from typing import Dict, List
 
 import gin
 import numpy as np
@@ -106,6 +106,9 @@ class ExploratoryPolicy(PolicyBase[TState, TActionSpace, TAction]):
     def compute_states_log_flow(self, states: List[TState]) -> TensorType[float]:
         raise NotImplementedError()
 
-    def update_using_trajectories(self, trajectories: Trajectories[TState, TActionSpace, TAction]):
-        self.first_policy.update_using_trajectories(trajectories)
-        self.second_policy.update_using_trajectories(trajectories)
+    def update_using_trajectories(
+        self, trajectories: Trajectories[TState, TActionSpace, TAction], update_idx: int
+    ) -> Dict[str, float]:
+        output_first = self.first_policy.update_using_trajectories(trajectories, update_idx)
+        output_second = self.second_policy.update_using_trajectories(trajectories, update_idx)
+        return output_first | output_second

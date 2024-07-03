@@ -1,7 +1,7 @@
 include 'configs/rgfn_base.gin'
 
 include 'configs/envs/reaction.gin'
-include 'configs/proxies/reaction/seh.gin'
+include 'configs/proxies/target/seh.gin'
 
 TanimotoSimilarityModes.proxy_term_threshold = 8.0
 TanimotoSimilarityModes.similarity_threshold = 0.3

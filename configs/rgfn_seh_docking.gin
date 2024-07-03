@@ -1,7 +1,7 @@
 include 'configs/rgfn_base.gin'
 
 include 'configs/envs/reaction_docking.gin'
-include 'configs/proxies/reaction/seh_docking.gin'
+include 'configs/proxies/target/seh_docking.gin'
 
 NumScaffoldsFound.proxy_value_threshold_list = [10, 11, 12, 13]
 Reward.beta = 4

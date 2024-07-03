@@ -17,7 +17,7 @@ pip install dgl==2.2.1+cu118 -f https://data.dgl.ai/wheels/torch-2.3/cu118/repo.
 
 # If using CPU:
 pip install torch==2.3.0 --index-url https://download.pytorch.org/whl/cpu
-pip install dgl==2.2.1 -f https://data.dgl.ai/wheels/torch-2.3/cpu/repo.html
+pip install dgl==1.1.2 -f https://data.dgl.ai/wheels/torch-2.3/cpu/repo.html
 
 pip install -e .
 
@@ -41,7 +41,12 @@ To setup environment for REINVENT priors, run the following commands:
 
 ```bash
 pip install xxhash==3.4.1 molvs==0.1.1 tensorboard==2.16.2 tomli==2.0.1 pathos==0.3.2 numpy==1.26.4 mmpdb==2.1
+
+# If using CUDA:
 pip install torchvision==0.18.1+cu118 --no-deps --index-url https://download.pytorch.org/whl/cu118
+
+# If using CPU:
+pip install torchvision==0.18.1 --no-deps --index-url https://download.pytorch.org/whl/cpu
 ```
 
 To download the code for REINVENT priors, run the following command:

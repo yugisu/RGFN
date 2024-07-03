@@ -31,7 +31,7 @@ from rgfn.gfns.reaction_gfn.api.reaction_api import (
     ReactionStateC,
 )
 from rgfn.gfns.reaction_gfn.api.reaction_data_factory import ReactionDataFactory
-from rgfn.gfns.reaction_gfn.policies.action_embeddings import FragmentEmbeddingBase
+from rgfn.gfns.reaction_gfn.policies.action_embeddings import ActionEmbeddingBase
 from rgfn.gfns.reaction_gfn.policies.graph_transformer import (
     GraphTransformer,
     mol2graph,
@@ -58,7 +58,7 @@ class ReactionForwardPolicy(
     def __init__(
         self,
         data_factory: ReactionDataFactory,
-        action_embedding_fn: FragmentEmbeddingBase,
+        action_embedding_fn: ActionEmbeddingBase,
         hidden_dim: int = 64,
         num_heads: int = 4,
         num_layers: int = 5,
@@ -155,16 +155,13 @@ class ReactionForwardPolicy(
             dim=0,
         )
         embeddings = self.mlp_b(embedding)  # (1, hidden_dim)
-        all_action_embeddings = self._get_b_action_embedding()  # (num_fragments, hidden_dim)
+        all_action_embeddings = (
+            self.b_action_embedding_fn.get_embeddings()
+        )  # (num_fragments, hidden_dim)
         logits = embeddings @ all_action_embeddings.T  # (1, num_fragments)
         log_prob = torch.log_softmax(logits, dim=1)
         x = log_prob.repeat(len(states), 1)
         return x
-
-    def _get_b_action_embedding(self) -> TensorType[float]:
-        if self.b_action_embedding_cache is None:
-            self.b_action_embedding_cache = self.b_action_embedding_fn.get_embeddings()
-        return self.b_action_embedding_cache
 
     def _forward_a(
         self,
@@ -205,7 +202,7 @@ class ReactionForwardPolicy(
         ]
         actions_indices_flat = [idx for indices in actions_indices for idx in indices]
         action_indices_flat = torch.tensor(actions_indices_flat).long().to(self.device)
-        all_action_embeddings = self._get_b_action_embedding()  # (num_fragments, hidden_dim)
+        all_action_embeddings = self.b_action_embedding_fn.get_embeddings()
         action_embeddings = torch.index_select(
             all_action_embeddings, index=action_indices_flat, dim=0
         )
@@ -307,10 +304,7 @@ class ReactionForwardPolicy(
         raise NotImplementedError()
 
     def clear_action_embedding_cache(self) -> None:
-        self.b_action_embedding_cache = None
+        self.b_action_embedding_fn.clear_cache()
 
     def clear_sampling_cache(self) -> None:
-        pass
-
-    def update_using_trajectories(self, trajectories: Trajectories[TState, TActionSpace, TAction]):
         pass
