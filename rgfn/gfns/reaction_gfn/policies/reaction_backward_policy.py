@@ -130,7 +130,7 @@ class ReactionBackwardPolicy(
         logits, _ = to_dense_embeddings(
             logits, [len(indices) for indices in embedding_indices_list], fill_value=float("-inf")
         )
-        return torch.log_softmax(logits, dim=1).float()
+        return logits
 
     def _forward_deterministic(
         self,
@@ -142,12 +142,12 @@ class ReactionBackwardPolicy(
         max_action_idx = max(
             action_space.get_possible_actions_indices()[0] for action_space in action_spaces
         )
-        log_probs_list = []
+        logits_list = []
         for action_space in action_spaces:
-            log_probs = [-float("inf")] * (max_action_idx + 1)
-            log_probs[action_space.get_possible_actions_indices()[0]] = 0
-            log_probs_list.append(log_probs)
-        return torch.tensor(log_probs_list).float().to(self.device)
+            logits = [-float("inf")] * (max_action_idx + 1)
+            logits[action_space.get_possible_actions_indices()[0]] = 0
+            logits_list.append(logits)
+        return torch.tensor(logits_list).float().to(self.device)
 
     def get_shared_embeddings(
         self, states: List[ReactionState], action_spaces: List[ReactionActionSpace]

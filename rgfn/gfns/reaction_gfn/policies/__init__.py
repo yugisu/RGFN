@@ -1,3 +1,4 @@
 from .reaction_backward_policy import ReactionBackwardPolicy
 from .reaction_forward_policy import ReactionForwardPolicy
+from .reaction_forward_policy_with_rnd import ReactionForwardPolicyWithRND
 from .rnd_novelty_forward_policy import RNDNoveltyForwardPolicy

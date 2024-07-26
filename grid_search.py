@@ -66,7 +66,7 @@ def grid_search(
         gin.parse_config_files_and_bindings(config_files, bindings=bindings)
         seed_everything(seed)
         trainer = Trainer()
-        trainer.logger.log_code("gflownet")
+        trainer.logger.log_code("rgfn")
         trainer.logger.log_to_file("\n".join(bindings), "bindings")
         trainer.logger.log_to_file(gin.operative_config_str(), "operative_config")
         trainer.logger.log_to_file(gin.config_str(), "config")

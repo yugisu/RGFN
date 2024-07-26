@@ -194,7 +194,7 @@ class RNDNoveltyForwardPolicy(
             predictor_embedding - target_embedding.detach(), dim=-1, p=2
         )  # (num_fragments)
         logits = logits.repeat(len(states), 1)  # (n_states, num_fragments)
-        return logits
+        return logits * self.temperature
 
     def _forward_a(
         self,
@@ -240,7 +240,7 @@ class RNDNoveltyForwardPolicy(
             [action_space.possible_actions_mask for action_space in action_spaces]
         ).to(self.device)
         logits = torch.masked_fill(logits, ~mask, float("-inf"))
-        return logits
+        return logits * self.temperature
 
     def _forward_b(
         self,
@@ -298,7 +298,7 @@ class RNDNoveltyForwardPolicy(
         )  # (batch_size, max_num_actions)
 
         logits = torch.masked_fill(logits, ~mask, float("-inf"))
-        return logits
+        return logits * self.temperature
 
     def _forward_c(
         self,
@@ -332,7 +332,7 @@ class RNDNoveltyForwardPolicy(
         logits, _ = to_dense_embeddings(
             logits, [len(indices) for indices in embedding_indices_list], fill_value=float("-inf")
         )
-        return logits
+        return logits * self.temperature
 
     def _forward_early_terminate(
         self,
@@ -391,25 +391,6 @@ class RNDNoveltyForwardPolicy(
             all_predictor_embeddings=predictor_embeddings,
         )
 
-    def _sample_actions_from_log_probs(
-        self, log_probs: TensorType[float], action_spaces: List[TIndexedActionSpace]
-    ) -> List[TAction]:
-        """
-        A helper function to sample actions from the log probabilities.
-
-        Args:
-            log_probs: log probabilities of the shape (N, max_num_actions)
-            action_spaces: the list of action spaces of the length N.
-
-        Returns:
-            the list of sampled actions.
-        """
-        log_probs = torch.log_softmax(log_probs * self.temperature, dim=-1)
-        return super()._sample_actions_from_log_probs(log_probs, action_spaces)
-
-    def compute_states_log_flow(self, states: List[ReactionState]) -> TensorType[float]:
-        raise NotImplementedError()
-
     def clear_action_embedding_cache(self) -> None:
         self.predictor_action_embedding_a.clear_cache()
         self.predictor_action_embedding_b.clear_cache()
@@ -433,14 +414,42 @@ class RNDNoveltyForwardPolicy(
         self.optimizer.step()
         return {"novelty_policy_loss": loss.item()}
 
-    def compute_action_log_probs(
-        self, states: List[TState], action_spaces: List[TIndexedActionSpace], actions: List[TAction]
-    ) -> TensorType[float]:
-        raise NotImplementedError()
+    def compute_states_log_flow(self, states: List[TState]) -> TensorType[float]:
+        pass
 
     def compute_state_action_novelty(
         self, states: List[TState], action_spaces: List[TIndexedActionSpace], actions: List[TAction]
     ) -> TensorType[float]:
         # This part can be optimized: we don't need to compute novelty for the entire action spaces, but only
         # for the actions that were actually taken.
-        return super().compute_action_log_probs(states, action_spaces, actions)
+        return self.compute_action_log_probs(states, action_spaces, actions)
+
+    def _select_actions_log_probs(
+        self,
+        logits: TensorType[float],
+        action_spaces: Sequence[TIndexedActionSpace],
+        actions: Sequence[TAction],
+    ) -> TensorType[float]:
+        """
+        This method overrides the parent method and removes the log_softmax computation. As a result, it returns
+        the logits corresponding to the chosen actions. It's leveraged in the `compute_action_log_probs` call in
+        `compute_state_action_novelty` method.
+
+        Args:
+            logits: logits of the shape (N, max_num_actions)
+            action_spaces: the list of action spaces of the length N.
+            actions: the list of chosen actions of the length N.
+
+        Returns:
+            the log probabilities of the chosen actions of the shape (N,).
+        """
+        action_indices = [
+            action_space.get_idx_of_action(action)  # type: ignore
+            for action_space, action in zip(action_spaces, actions)
+        ]
+        max_num_actions = logits.shape[1]
+        action_indices = [
+            idx * max_num_actions + action_idx for idx, action_idx in enumerate(action_indices)
+        ]
+        action_tensor_indices = torch.tensor(action_indices).long().to(self.device)
+        return torch.index_select(logits.view(-1), index=action_tensor_indices, dim=0)

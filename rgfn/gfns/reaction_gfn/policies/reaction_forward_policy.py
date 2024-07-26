@@ -159,9 +159,7 @@ class ReactionForwardPolicy(
             self.b_action_embedding_fn.get_embeddings()
         )  # (num_fragments, hidden_dim)
         logits = embeddings @ all_action_embeddings.T  # (1, num_fragments)
-        log_prob = torch.log_softmax(logits, dim=1)
-        x = log_prob.repeat(len(states), 1)
-        return x
+        return logits.repeat(len(states), 1)
 
     def _forward_a(
         self,
@@ -178,8 +176,7 @@ class ReactionForwardPolicy(
         mask = torch.tensor(
             [action_space.possible_actions_mask for action_space in action_spaces]
         ).to(self.device)
-        logits = torch.masked_fill(logits, ~mask, float("-inf"))
-        return torch.log_softmax(logits, dim=1)
+        return torch.masked_fill(logits, ~mask, float("-inf"))
 
     def _forward_b(
         self,
@@ -214,8 +211,7 @@ class ReactionForwardPolicy(
         logits = torch.matmul(actions_embeddings, embeddings.unsqueeze(2)).squeeze(
             2
         )  # (batch_size, max_num_actions)
-        logits = torch.masked_fill(logits, ~mask, float("-inf"))
-        return torch.log_softmax(logits, dim=1)
+        return torch.masked_fill(logits, ~mask, float("-inf"))
 
     def _forward_c(
         self,
@@ -242,8 +238,7 @@ class ReactionForwardPolicy(
         logits, _ = to_dense_embeddings(
             logits, [len(indices) for indices in embedding_indices_list], fill_value=float("-inf")
         )
-        log_prob = torch.log_softmax(logits, dim=1)
-        return log_prob
+        return logits
 
     def _forward_early_terminate(
         self,

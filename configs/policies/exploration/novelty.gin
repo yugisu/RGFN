@@ -1,8 +1,11 @@
-ExploratoryPolicy.first_policy = %forward_policy
-ExploratoryPolicy.second_policy = @RNDNoveltyForwardPolicy()
 RNDNoveltyForwardPolicy.temperature = 1.0
 RNDNoveltyForwardPolicy.data_factory = %data_factory
 
-ExploratoryPolicy.first_policy_weight = 0.95
-train_forward_policy/gin.singleton.constructor = @ExploratoryPolicy
-train_forward_policy = @train_forward_policy/gin.singleton()
+novelty_forward_policy/gin.singleton.constructor = @RNDNoveltyForwardPolicy
+novelty_forward_policy = @novelty_forward_policy/gin.singleton()
+
+ReactionForwardPolicyWithRND.reaction_forward_policy = %forward_policy
+ReactionForwardPolicyWithRND.rnd_novelty_forward_policy = %novelty_forward_policy
+forward_with_rnd/gin.singleton.constructor = @ReactionForwardPolicyWithRND
+forward_with_rnd = @forward_with_rnd/gin.singleton()
+train_forward_policy = %forward_with_rnd

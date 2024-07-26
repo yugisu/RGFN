@@ -57,8 +57,8 @@ class FewPhasePolicyBase(
             phase_states = [states[idx] for idx in phase_indices]
             phase_action_spaces = [action_spaces[idx] for idx in phase_indices]
 
-            log_probs = forward_fn(phase_states, phase_action_spaces, shared_embeddings)
-            phase_actions = self._sample_actions_from_log_probs(log_probs, phase_action_spaces)
+            logits = forward_fn(phase_states, phase_action_spaces, shared_embeddings)
+            phase_actions = self._sample_actions_from_logits(logits, phase_action_spaces)
             actions.extend(phase_actions)
             action_to_state_idx.extend(phase_indices)
 
@@ -68,27 +68,31 @@ class FewPhasePolicyBase(
 
         return [actions[state_to_action_idx[state_idx]] for state_idx in range(len(states))]
 
-    def _sample_actions_from_log_probs(
-        self, log_probs: TensorType[float], action_spaces: List[TIndexedActionSpace]
+    def _sample_actions_from_logits(
+        self, logits: TensorType[float], action_spaces: List[TIndexedActionSpace]
     ) -> List[TAction]:
         """
         A helper function to sample actions from the log probabilities.
 
         Args:
-            log_probs: log probabilities of the shape (N, max_num_actions)
+            logits: logits of the shape (N, max_num_actions)
             action_spaces: the list of action spaces of the length N.
 
         Returns:
             the list of sampled actions.
         """
-        action_indices = Categorical(probs=torch.exp(log_probs)).sample()
+        probs = torch.softmax(logits, dim=1)
+        action_indices = Categorical(probs=probs).sample()
         return [
             action_space.get_action_at_idx(idx.item())
             for action_space, idx in zip(action_spaces, action_indices)
         ]
 
     def compute_action_log_probs(
-        self, states: List[TState], action_spaces: List[TIndexedActionSpace], actions: List[TAction]
+        self,
+        states: List[TState],
+        action_spaces: List[TIndexedActionSpace],
+        actions: List[TAction],
     ) -> TensorType[float]:
         shared_embeddings = self.get_shared_embeddings(states, action_spaces)
 
@@ -106,9 +110,9 @@ class FewPhasePolicyBase(
             phase_states = [states[idx] for idx in phase_indices]
             phase_action_spaces = [action_spaces[idx] for idx in phase_indices]
             phase_actions = [actions[idx] for idx in phase_indices]
-            log_probs = forward_fn(phase_states, phase_action_spaces, shared_embeddings)
+            logits = forward_fn(phase_states, phase_action_spaces, shared_embeddings)
             phase_log_probs = self._select_actions_log_probs(
-                log_probs, phase_action_spaces, phase_actions
+                logits, phase_action_spaces, phase_actions
             )
             log_probs_list.append(phase_log_probs)
             log_probs_to_state_idx.extend(phase_indices)
@@ -123,7 +127,7 @@ class FewPhasePolicyBase(
 
     def _select_actions_log_probs(
         self,
-        log_probs: TensorType[float],
+        logits: TensorType[float],
         action_spaces: Sequence[TIndexedActionSpace],
         actions: Sequence[TAction],
     ) -> TensorType[float]:
@@ -131,7 +135,7 @@ class FewPhasePolicyBase(
         A helper function to select the log probabilities of the actions.
 
         Args:
-            log_probs: log probabilities of the shape (N, max_num_actions)
+            logits: logits of the shape (N, max_num_actions)
             action_spaces: the list of action spaces of the length N.
             actions: the list of chosen actions of the length N.
 
@@ -142,10 +146,10 @@ class FewPhasePolicyBase(
             action_space.get_idx_of_action(action)  # type: ignore
             for action_space, action in zip(action_spaces, actions)
         ]
-        max_num_actions = log_probs.shape[1]
+        max_num_actions = logits.shape[1]
         action_indices = [
             idx * max_num_actions + action_idx for idx, action_idx in enumerate(action_indices)
         ]
         action_tensor_indices = torch.tensor(action_indices).long().to(self.device)
-        log_probs = torch.index_select(log_probs.view(-1), index=action_tensor_indices, dim=0)
-        return log_probs
+        log_probs = torch.log_softmax(logits, dim=1)
+        return torch.index_select(log_probs.view(-1), index=action_tensor_indices, dim=0)

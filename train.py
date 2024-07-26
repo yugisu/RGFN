@@ -22,7 +22,7 @@ if __name__ == "__main__":
     run_name = f"{config_name}/{get_time_stamp()}"
     gin.parse_config_files_and_bindings([config], bindings=[f'run_name="{run_name}"'])
     trainer = Trainer(resume_path=checkpoint_path)
-    trainer.logger.log_code("gflownet")
+    trainer.logger.log_code("rgfn")
     trainer.logger.log_to_file(gin.operative_config_str(), "operative_config")
     trainer.logger.log_to_file(gin.config_str(), "config")
     trainer.train()
