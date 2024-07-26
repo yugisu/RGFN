@@ -130,6 +130,7 @@ class FewPhasePolicyBase(
         logits: TensorType[float],
         action_spaces: Sequence[TIndexedActionSpace],
         actions: Sequence[TAction],
+        compute_logits: bool = False,
     ) -> TensorType[float]:
         """
         A helper function to select the log probabilities of the actions.

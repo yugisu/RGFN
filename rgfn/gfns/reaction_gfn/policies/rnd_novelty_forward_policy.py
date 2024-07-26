@@ -422,6 +422,7 @@ class RNDNoveltyForwardPolicy(
     ) -> TensorType[float]:
         # This part can be optimized: we don't need to compute novelty for the entire action spaces, but only
         # for the actions that were actually taken.
+        
         return self.compute_action_log_probs(states, action_spaces, actions)
 
     def _select_actions_log_probs(
