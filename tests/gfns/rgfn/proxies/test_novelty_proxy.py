@@ -50,9 +50,7 @@ def test__novelty_proxy__updates_properly(
     novelty_scores_old = proxy.compute_proxy_output(states).value
 
     for i in range(3):
-        proxy.update_using_trajectories(trajectories, update_idx=i)
+        proxy.on_end_computing_objective(trajectories=trajectories, iteration_idx=i)
 
     novelty_scores_new = proxy.compute_proxy_output(states).value
-    print(novelty_scores_old)
-    print(novelty_scores_new)
     assert torch.all(novelty_scores_old > novelty_scores_new)

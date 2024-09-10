@@ -10,7 +10,7 @@ from meeko import MoleculePreparation, PDBQTWriterLegacy
 from rdkit import Chem
 from rdkit.Chem import AllChem
 
-from rgfn.api.env_base import TState
+from rgfn.api.type_variables import TState
 from rgfn.gfns.reaction_gfn.api.reaction_api import (
     ReactionState,
     ReactionStateEarlyTerminal,
@@ -225,6 +225,3 @@ class DockingMoleculeProxy(CachedProxyBase[ReactionState]):
             if scores is not None:
                 return scores
         return [self.failed_score] * len(smiles)
-
-    def set_device(self, device: str):
-        self.device = device

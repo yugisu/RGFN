@@ -7,8 +7,8 @@ from torch import nn
 from torch.nn import Parameter
 from torchtyping import TensorType
 
-from rgfn.api.env_base import TAction, TActionSpace, TState
 from rgfn.api.trajectories import Trajectories
+from rgfn.api.type_variables import TAction, TActionSpace, TState
 from rgfn.gfns.reaction_gfn.api.reaction_api import (
     ReactionAction,
     ReactionActionSpace,
@@ -42,7 +42,6 @@ class SharedEmbeddings:
 @gin.configurable()
 class ReactionForwardPolicyWithRND(
     FewPhasePolicyBase[ReactionState, ReactionActionSpace, ReactionAction, SharedEmbeddings],
-    nn.Module,
 ):
     def __init__(
         self,
@@ -62,7 +61,9 @@ class ReactionForwardPolicyWithRND(
             ReactionActionSpace0Invalid: self._forward_early_terminate,
         }
 
-        self._device = "cpu"
+    @property
+    def hook_objects(self) -> List["TrainingHooksMixin"]:
+        return [self.reaction_forward_policy, self.rnd_novelty_forward_policy]
 
     @property
     def action_space_to_forward_fn(
@@ -72,15 +73,6 @@ class ReactionForwardPolicyWithRND(
         Callable[[List[TState], List[TIndexedActionSpace], TSharedEmbeddings], TensorType[float]],
     ]:
         return self._action_space_type_to_forward_fn
-
-    @property
-    def device(self) -> str:
-        return self._device
-
-    def set_device(self, device: str):
-        self.reaction_forward_policy.set_device(device)
-        self.rnd_novelty_forward_policy.set_device(device)
-        self._device = device
 
     def parameters(self, recurse: bool = True) -> Iterator[Parameter]:
         return self.reaction_forward_policy.parameters()
@@ -162,23 +154,3 @@ class ReactionForwardPolicyWithRND(
             forward_shared_embeddings=forward_shared_embeddings,
             rnd_shared_embeddings=rnd_shared_embeddings,
         )
-
-    def compute_states_log_flow(self, states: List[ReactionState]) -> TensorType[float]:
-        raise NotImplementedError()
-
-    def clear_action_embedding_cache(self) -> None:
-        self.reaction_forward_policy.clear_action_embedding_cache()
-        self.rnd_novelty_forward_policy.clear_action_embedding_cache()
-
-    def clear_sampling_cache(self) -> None:
-        self.reaction_forward_policy.clear_sampling_cache()
-        self.rnd_novelty_forward_policy.clear_sampling_cache()
-
-    def update_using_trajectories(
-        self, trajectories: Trajectories[TState, TActionSpace, TAction], update_idx: int
-    ) -> Dict[str, float]:
-        output_1 = self.reaction_forward_policy.update_using_trajectories(trajectories, update_idx)
-        output_2 = self.rnd_novelty_forward_policy.update_using_trajectories(
-            trajectories, update_idx
-        )
-        return output_1 | output_2

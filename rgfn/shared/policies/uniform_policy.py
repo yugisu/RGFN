@@ -6,9 +6,9 @@ import gin
 import torch
 from torchtyping import TensorType
 
-from rgfn.api.env_base import TAction, TActionSpace, TState
 from rgfn.api.policy_base import PolicyBase
 from rgfn.api.trajectories import Trajectories
+from rgfn.api.type_variables import TAction, TActionSpace, TState
 
 
 class IndexedActionSpaceBase(abc.ABC, Generic[TAction]):
@@ -99,12 +99,3 @@ class UniformPolicy(PolicyBase[TState, TIndexedActionSpace, TAction]):
 
     def compute_states_log_flow(self, states: List[TState]) -> TensorType[float]:
         raise NotImplementedError()
-
-    def set_device(self, device: str):
-        self.device = device
-
-    def clear_sampling_cache(self) -> None:
-        pass
-
-    def clear_action_embedding_cache(self) -> None:
-        pass

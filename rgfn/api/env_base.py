@@ -1,13 +1,12 @@
 import copy
 from abc import ABC, abstractmethod
-from typing import Generic, List, TypeVar
+from typing import Generic, List
 
-TState = TypeVar("TState")
-TActionSpace = TypeVar("TActionSpace")
-TAction = TypeVar("TAction")
+from rgfn.api.training_hooks_mixin import TrainingHooksMixin
+from rgfn.api.type_variables import TAction, TActionSpace, TState
 
 
-class EnvBase(Generic[TState, TActionSpace, TAction], ABC):
+class EnvBase(Generic[TState, TActionSpace, TAction], ABC, TrainingHooksMixin):
     """
     Base class for environments. It provides a minimal and flexible interface that can be used to implement
     environments with dynamic action spaces. The reward is decoupled from the environment, so that environment should

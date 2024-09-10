@@ -3,8 +3,8 @@ from typing import Generic
 
 import gin
 
-from rgfn.api.env_base import TAction, TActionSpace, TState
 from rgfn.api.trajectories import Trajectories
+from rgfn.api.type_variables import TAction, TActionSpace, TState
 from rgfn.gfns.reaction_gfn.api.reaction_api import (
     ReactionAction,
     ReactionActionSpace,

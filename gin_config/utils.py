@@ -3,7 +3,8 @@ from typing import Any, List
 
 import gin
 
-from rgfn.api.env_base import EnvBase, TAction, TActionSpace, TState
+from rgfn.api.env_base import EnvBase
+from rgfn.api.type_variables import TAction, TActionSpace, TState
 
 
 @gin.configurable()

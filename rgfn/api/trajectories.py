@@ -4,8 +4,8 @@ from typing import Any, Generic, List
 import torch
 from torchtyping import TensorType
 
-from rgfn.api.env_base import TAction, TActionSpace, TState
 from rgfn.api.reward_output import RewardOutput
+from rgfn.api.type_variables import TAction, TActionSpace, TState
 
 
 class Trajectories(Generic[TState, TActionSpace, TAction]):
@@ -393,7 +393,7 @@ class Trajectories(Generic[TState, TActionSpace, TAction]):
             trajectories._backward_log_probs_flat = torch.cat(backward_log_probs_list)
         return trajectories
 
-    def set_device(self, device: str):
+    def set_device(self, device: str, recursive: bool = True):
         """
         Set the device of the trajectories.
 

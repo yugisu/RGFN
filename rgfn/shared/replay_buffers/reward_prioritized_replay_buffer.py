@@ -5,10 +5,10 @@ import numpy as np
 import torch
 from more_itertools import chunked
 
-from rgfn.api.env_base import TAction, TActionSpace, TState
 from rgfn.api.replay_buffer_base import ReplayBufferBase
 from rgfn.api.sampler_base import SamplerBase
 from rgfn.api.trajectories import Trajectories
+from rgfn.api.type_variables import TAction, TActionSpace, TState
 
 THashableState = TypeVar("THashableState", bound=Hashable)
 
@@ -123,12 +123,3 @@ class RewardPrioritizedReplayBuffer(ReplayBufferBase[THashableState, TActionSpac
     @property
     def size(self):
         return len(self.states_list)
-
-    def set_device(self, device: str):
-        self.sampler.set_device(device)
-
-    def clear_action_embedding_cache(self):
-        self.sampler.clear_action_embedding_cache()
-
-    def clear_sampling_cache(self):
-        self.sampler.clear_sampling_cache()

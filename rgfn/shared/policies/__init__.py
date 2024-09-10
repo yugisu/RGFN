@@ -1,4 +1,4 @@
 from .action_count_policy import ActionCountPolicy
-from .exploitation_punishment_helper import ExploitationPunishmentHelper
+from .exploitation_penalty_helper import ExploitationPenaltyHelper
 from .exploratory_policy import ExploratoryPolicy
 from .uniform_policy import UniformPolicy

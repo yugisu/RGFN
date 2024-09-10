@@ -1,6 +1,6 @@
 import abc
 import math
-from typing import List
+from typing import Any, Dict, List
 
 import dgl
 import gin
@@ -19,10 +19,12 @@ from torch import nn
 from torch.nn import init
 from torchtyping import TensorType
 
+from rgfn.api.training_hooks_mixin import TrainingHooksMixin
+from rgfn.api.trajectories import Trajectories
 from rgfn.gfns.reaction_gfn.api.reaction_data_factory import ReactionDataFactory
 
 
-class ActionEmbeddingBase(abc.ABC, nn.Module):
+class ActionEmbeddingBase(abc.ABC, nn.Module, TrainingHooksMixin):
     def __init__(self, data_factory: ReactionDataFactory, hidden_dim: int):
         super().__init__()
         self.hidden_dim = hidden_dim
@@ -37,12 +39,18 @@ class ActionEmbeddingBase(abc.ABC, nn.Module):
     def clear_cache(self):
         self._cache = None
 
-    @abc.abstractmethod
-    def _get_embeddings(self) -> TensorType[float]:
-        pass
+    def on_start_sampling(self, iteration_idx: int, recursive: bool = True) -> Dict[str, Any]:
+        self._cache = None
+        return {}
+
+    def on_end_sampling(
+        self, iteration_idx: int, trajectories: Trajectories, recursive: bool = True
+    ) -> Dict[str, Any]:
+        self._cache = None
+        return {}
 
     @abc.abstractmethod
-    def set_device(self, device: str):
+    def _get_embeddings(self) -> TensorType[float]:
         pass
 
 
@@ -58,9 +66,6 @@ class FragmentOneHotEmbedding(ActionEmbeddingBase):
     def _get_embeddings(self) -> TensorType[float]:
         return self.weights
 
-    def set_device(self, device):
-        self.to(device)
-
 
 @gin.configurable()
 class ReactionsOneHotEmbedding(ActionEmbeddingBase):
@@ -73,9 +78,6 @@ class ReactionsOneHotEmbedding(ActionEmbeddingBase):
 
     def _get_embeddings(self) -> TensorType[float]:
         return self.weights
-
-    def set_device(self, device):
-        self.to(device)
 
 
 @gin.configurable()
@@ -143,9 +145,9 @@ class FragmentFingerprintEmbedding(ActionEmbeddingBase):
             return fingerprints + self.one_hot_weight * self.one_hot
         return fingerprints
 
-    def set_device(self, device):
+    def set_device(self, device: str, recursive: bool = True):
         self.all_fingerprints = self.all_fingerprints.to(device)
-        self.to(device)
+        self.super().set_device(device, recursive=recursive)
 
 
 @gin.configurable()
@@ -202,7 +204,7 @@ class FragmentGNNEmbedding(ActionEmbeddingBase):
             graphs.append(graph)
         return dgl.batch(graphs)
 
-    def get_embeddings(self) -> TensorType[float]:
+    def _get_embeddings(self) -> TensorType[float]:
         node_embeddings = self.gnn(self.batch, self.batch.ndata["h"])
         graph_embeddings = torch.zeros(
             size=(len(self.fragments), self.hidden_dim),
@@ -220,6 +222,6 @@ class FragmentGNNEmbedding(ActionEmbeddingBase):
             return graph_embeddings + self.one_hot_weight * self.one_hot
         return graph_embeddings
 
-    def set_device(self, device):
+    def set_device(self, device: str, recursive: bool = True):
         self.batch = self.batch.to(device)
-        self.to(device)
+        self.super().set_device(device, recursive=recursive)

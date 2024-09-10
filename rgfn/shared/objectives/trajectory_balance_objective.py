@@ -5,10 +5,10 @@ import torch
 from torch import nn
 from torch.nn import Parameter
 
-from rgfn.api.env_base import TAction, TActionSpace, TState
 from rgfn.api.objective_base import ObjectiveBase, ObjectiveOutput
 from rgfn.api.policy_base import PolicyBase
 from rgfn.api.trajectories import Trajectories
+from rgfn.api.type_variables import TAction, TActionSpace, TState
 
 
 @gin.configurable()
@@ -31,7 +31,6 @@ class TrajectoryBalanceObjective(ObjectiveBase[TState, TActionSpace, TAction]):
     ):
         super().__init__(forward_policy=forward_policy, backward_policy=backward_policy)
         self.logZ = nn.Parameter(torch.ones(z_dim) * 150.0 / 64)
-        self.device = "cpu"
 
     def compute_objective_output(
         self, trajectories: Trajectories[TState, TActionSpace, TAction]
@@ -76,15 +75,3 @@ class TrajectoryBalanceObjective(ObjectiveBase[TState, TActionSpace, TAction]):
         """
         yield from super().parameters(recurse)
         yield self.logZ
-
-    def set_device(self, device: str):
-        """
-        Set the device on which to perform the computations.
-        Args:
-            device: device to set.
-
-        Returns:
-            None
-        """
-        super().set_device(device)
-        self.logZ.to(device)

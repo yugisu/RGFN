@@ -4,7 +4,8 @@ import gin
 from rdkit import Chem, RDLogger
 from rdkit.Chem import Mol, MolToSmiles
 
-from rgfn.api.env_base import EnvBase, TState
+from rgfn.api.env_base import EnvBase
+from rgfn.api.type_variables import TState
 from rgfn.gfns.reaction_gfn.api.reaction_api import (
     Molecule,
     Reaction,
@@ -38,7 +39,11 @@ RDLogger.DisableLog("rdApp.*")
 
 @gin.configurable()
 class ReactionEnv(EnvBase[ReactionState, ReactionActionSpace, ReactionAction]):
-    def __init__(self, data_factory: ReactionDataFactory, max_num_reactions: int):
+    def __init__(
+        self,
+        data_factory: ReactionDataFactory,
+        max_num_reactions: int,
+    ):
         super().__init__()
         self.reactions = data_factory.get_reactions()
         self.disconnections = data_factory.get_disconnections()
@@ -346,7 +351,9 @@ class ReactionEnv(EnvBase[ReactionState, ReactionActionSpace, ReactionAction]):
         if action.reaction is None:
             return ReactionStateTerminal(molecule=state.molecule, num_reactions=state.num_reactions)
         return ReactionStateB(
-            molecule=state.molecule, reaction=action.reaction, num_reactions=state.num_reactions
+            molecule=state.molecule,
+            reaction=action.reaction,
+            num_reactions=state.num_reactions,
         )
 
     def _apply_forward_actions_b(
@@ -399,7 +406,9 @@ class ReactionEnv(EnvBase[ReactionState, ReactionActionSpace, ReactionAction]):
         self, state: ReactionStateC, action: ReactionActionB
     ) -> ReactionStateB:
         return ReactionStateB(
-            molecule=state.molecule, reaction=state.reaction, num_reactions=state.num_reactions
+            molecule=state.molecule,
+            reaction=state.reaction,
+            num_reactions=state.num_reactions,
         )
 
     def _apply_backward_actions_c(

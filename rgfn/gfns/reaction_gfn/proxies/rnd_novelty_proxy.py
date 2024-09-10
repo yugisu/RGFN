@@ -64,7 +64,6 @@ class RNDNoveltyProxy(ProxyBase[ReactionState]):
             raise ValueError(f"Unknown optimizer class: {optimizer_cls}")
 
         self.device = "cpu"
-        self.last_update_idx = -1
 
     def parameters(self):
         yield from self.predictor_network.parameters()
@@ -84,7 +83,7 @@ class RNDNoveltyProxy(ProxyBase[ReactionState]):
         predicted_x = self.predictor_mlp(predicted_x)
         return torch.norm(predicted_x - target_x.detach(), dim=-1, p=2)
 
-    def set_device(self, device: str):
+    def set_device(self, device: str, recursive: bool = True):
         self.device = device
         self.random_target_network.to(device)
         self.predictor_network.to(device)
@@ -108,14 +107,9 @@ class RNDNoveltyProxy(ProxyBase[ReactionState]):
 
         return ProxyOutput(value=novelty, components=None)
 
-    def update_using_trajectories(
-        self, trajectories: Trajectories, update_idx: int
+    def on_end_computing_objective(
+        self, iteration_idx: int, trajectories: Trajectories, recursive: bool = True
     ) -> Dict[str, float]:
-        if update_idx == self.last_update_idx:
-            return {}
-
-        self.last_update_idx = update_idx
-
         self.optimizer.zero_grad()
 
         states = trajectories.get_last_states_flat()

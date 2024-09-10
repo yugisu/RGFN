@@ -4,7 +4,7 @@ from typing import List
 import gin
 from rdkit.Chem.QED import qed
 
-from rgfn.api.env_base import TState
+from rgfn.api.type_variables import TState
 from rgfn.gfns.reaction_gfn.api.reaction_api import (
     ReactionState,
     ReactionStateEarlyTerminal,

@@ -1,14 +1,15 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Dict, Generic, Iterator
+from typing import Dict, Generic, Iterator, List
 
 from torch import nn
 from torch.nn import Parameter
 from torchtyping import TensorType
 
-from rgfn.api.env_base import TAction, TActionSpace, TState
 from rgfn.api.policy_base import PolicyBase
+from rgfn.api.training_hooks_mixin import TrainingHooksMixin
 from rgfn.api.trajectories import Trajectories
+from rgfn.api.type_variables import TAction, TActionSpace, TState
 
 
 @dataclass
@@ -25,7 +26,7 @@ class ObjectiveOutput:
     metrics: Dict[str, float] = field(default_factory=dict)
 
 
-class ObjectiveBase(nn.Module, ABC, Generic[TState, TActionSpace, TAction]):
+class ObjectiveBase(nn.Module, ABC, Generic[TState, TActionSpace, TAction], TrainingHooksMixin):
     """
     A base class for GFN objectives. An objective is a function that takes a batch of
         trajectories and computes the loss (objective) and possibly some metrics.
@@ -50,6 +51,10 @@ class ObjectiveBase(nn.Module, ABC, Generic[TState, TActionSpace, TAction]):
         self.forward_policy = forward_policy
         self.backward_policy = backward_policy
         self.device = "cpu"
+
+    @property
+    def hook_objects(self) -> List["TrainingHooksMixin"]:
+        return [self.forward_policy, self.backward_policy]
 
     @abstractmethod
     def compute_objective_output(
@@ -124,62 +129,3 @@ class ObjectiveBase(nn.Module, ABC, Generic[TState, TActionSpace, TAction]):
             yield from self.forward_policy.parameters(recurse)
         if isinstance(self.backward_policy, nn.Module):
             yield from self.backward_policy.parameters(recurse)
-
-    def set_device(self, device: str):
-        """
-        Set the device on which to perform the computations.
-        Args:
-            device: device to set.
-
-        Returns:
-            None
-        """
-        self.device = device
-        self.forward_policy.set_device(device)
-        self.backward_policy.set_device(device)
-
-    def clear_sampling_cache(self) -> None:
-        """
-        Clear the sampling cache of the forward and backward policies. Some policies may use caching to speed up the
-            sampling process.
-
-        Returns:
-            None
-        """
-        self.forward_policy.clear_sampling_cache()
-        self.backward_policy.clear_sampling_cache()
-
-    def clear_action_embedding_cache(self) -> None:
-        """
-        Clear the action embedding cache of the forward and backward policies. Some policies may embed the actions and
-            cache the embeddings to speed up the computation of log probabilities.
-
-        Returns:
-            None
-        """
-        self.forward_policy.clear_action_embedding_cache()
-        self.backward_policy.clear_action_embedding_cache()
-
-    def update_using_trajectories(
-        self, trajectories: Trajectories[TState, TActionSpace, TAction], update_idx: int
-    ) -> Dict[str, float]:
-        """
-        Update the forward and backward policies using the trajectories. This method is used to update the policies
-            using the trajectories obtained in the sampling process.
-
-        Args:
-            trajectories: the batch of trajectories obtained in the sampling process.
-            update_idx: the index of the update. Used to avoid updating the policies multiple times with the same data.
-                The policies may be shared by other objects that can call `update_using_trajectories` in
-                `Trainer.update_using_trajectories`.
-
-        Returns:
-            A dict containing the metrics.
-        """
-        output_forward = self.forward_policy.update_using_trajectories(
-            trajectories, update_idx=update_idx
-        )
-        output_backward = self.backward_policy.update_using_trajectories(
-            trajectories, update_idx=update_idx
-        )
-        return output_forward | output_backward

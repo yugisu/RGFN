@@ -4,10 +4,10 @@ import gin
 import torch
 from torch_geometric.utils import to_dense_batch
 
-from rgfn.api.env_base import TAction, TActionSpace, TState
 from rgfn.api.objective_base import ObjectiveBase, ObjectiveOutput
 from rgfn.api.policy_base import PolicyBase
 from rgfn.api.trajectories import Trajectories
+from rgfn.api.type_variables import TAction, TActionSpace, TState
 
 
 @gin.configurable()
@@ -30,7 +30,6 @@ class SubTrajectoryBalanceObjective(ObjectiveBase[TState, TActionSpace, TAction]
     ):
         super().__init__(forward_policy=forward_policy, backward_policy=backward_policy)
         self.lambda_coeff = lambda_coeff
-        self.device = "cpu"
 
     def compute_objective_output(
         self, trajectories: Trajectories[TState, TActionSpace, TAction]

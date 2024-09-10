@@ -8,8 +8,8 @@ from torch.distributions import Categorical
 from torch.nn import Parameter
 from torchtyping import TensorType
 
-from rgfn.api.env_base import TAction, TActionSpace, TState
 from rgfn.api.trajectories import Trajectories
+from rgfn.api.type_variables import TAction, TActionSpace, TState
 from rgfn.gfns.reaction_gfn.api.reaction_api import (
     Molecule,
     Reaction,
@@ -48,17 +48,7 @@ class SharedEmbeddings:
 @gin.configurable()
 class ReactionBackwardPolicy(
     FewPhasePolicyBase[ReactionState, ReactionActionSpace, ReactionAction, SharedEmbeddings],
-    nn.Module,
 ):
-    @property
-    def action_space_to_forward_fn(
-        self,
-    ) -> Dict[
-        Type[TIndexedActionSpace],
-        Callable[[List[TState], List[TIndexedActionSpace], TSharedEmbeddings], TensorType[float]],
-    ]:
-        return self._action_space_type_to_forward_fn
-
     def __init__(
         self,
         data_factory: ReactionDataFactory,
@@ -66,13 +56,13 @@ class ReactionBackwardPolicy(
         num_heads: int = 4,
         num_layers: int = 5,
         linear_output: bool = False,
-        backbone_env: ReactionForwardPolicy | None = None,
+        backbone_policy: ReactionForwardPolicy | None = None,
     ):
         super().__init__()
         self.reactions = data_factory.get_reactions()
         self.reaction_to_idx = {reaction: idx for idx, reaction in enumerate(self.reactions)}
         self.fragments = data_factory.get_fragments()
-        self.use_backbone = backbone_env is not None
+        self.use_backbone = backbone_policy is not None
         self.gnn = (
             GraphTransformer(
                 x_dim=71,
@@ -83,7 +73,7 @@ class ReactionBackwardPolicy(
                 num_emb=hidden_dim,
             )
             if not self.use_backbone
-            else backbone_env.gnn
+            else backbone_policy.gnn
         )
 
         self.mlp_c = (
@@ -104,7 +94,14 @@ class ReactionBackwardPolicy(
             ReactionActionSpaceEarlyTerminate: self._forward_deterministic,
         }
 
-        self._device = "cpu"
+    @property
+    def action_space_to_forward_fn(
+        self,
+    ) -> Dict[
+        Type[TIndexedActionSpace],
+        Callable[[List[TState], List[TIndexedActionSpace], TSharedEmbeddings], TensorType[float]],
+    ]:
+        return self._action_space_type_to_forward_fn
 
     def _forward_c(
         self,
@@ -190,19 +187,5 @@ class ReactionBackwardPolicy(
             return super().parameters(recurse)
         return self.mlp_c.parameters(recurse)
 
-    def set_device(self, device: str):
-        self.to(device)
-        self._device = device
-
-    @property
-    def device(self) -> str:
-        return self._device
-
     def compute_states_log_flow(self, states: List[ReactionState]) -> TensorType[float]:
         raise NotImplementedError()
-
-    def clear_action_embedding_cache(self) -> None:
-        pass
-
-    def clear_sampling_cache(self) -> None:
-        pass

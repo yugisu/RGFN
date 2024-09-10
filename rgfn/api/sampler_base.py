@@ -5,13 +5,15 @@ from typing import Dict, Generic, Iterator, List
 
 import torch
 
-from rgfn.api.env_base import EnvBase, TAction, TActionSpace, TState
+from rgfn.api.env_base import EnvBase
 from rgfn.api.policy_base import PolicyBase
 from rgfn.api.reward import Reward
+from rgfn.api.training_hooks_mixin import TrainingHooksMixin
 from rgfn.api.trajectories import Trajectories
+from rgfn.api.type_variables import TAction, TActionSpace, TState
 
 
-class SamplerBase(ABC, Generic[TState, TActionSpace, TAction]):
+class SamplerBase(ABC, Generic[TState, TActionSpace, TAction], TrainingHooksMixin):
     """
     A base class for samplers. A sampler samples trajectories from the environment using a policy and assigns rewards to
     the trajectories.
@@ -33,9 +35,17 @@ class SamplerBase(ABC, Generic[TState, TActionSpace, TAction]):
         env: EnvBase[TState, TActionSpace, TAction],
         reward: Reward[TState] | None,
     ):
+        super().__init__()
         self.policy = policy
         self.env = env
         self.reward = reward
+
+    @property
+    def hook_objects(self) -> List[TrainingHooksMixin]:
+        hooks = [self.policy, self.env]
+        if self.reward is not None:
+            hooks.append(self.reward)
+        return hooks
 
     @abc.abstractmethod
     def get_trajectories_iterator(
@@ -96,56 +106,3 @@ class SamplerBase(ABC, Generic[TState, TActionSpace, TAction]):
             reward_outputs = self.reward.compute_reward_output(trajectories.get_last_states_flat())
             trajectories.set_reward_outputs(reward_outputs)
         return trajectories
-
-    def set_device(self, device: str):
-        """
-        Set the device of the policy and reward.
-
-        Args:
-            device: a string representing the device to use.
-
-        Returns:
-            None
-        """
-        self.policy.set_device(device)
-        if self.reward is not None:
-            self.reward.set_device(device)
-
-    def clear_sampling_cache(self) -> None:
-        """
-        Clear the sampling cache. Some policies may use caching to speed up the sampling process.
-
-        Returns:
-            None
-        """
-        self.policy.clear_sampling_cache()
-
-    def clear_action_embedding_cache(self) -> None:
-        """
-        Clear the action embedding cache of the replay buffer and underlying objects (e.g. samplers with policies). Some
-          policies may embed and cache the actions.
-
-        Returns:
-           None
-        """
-        self.policy.clear_action_embedding_cache()
-
-    def update_using_trajectories(
-        self, trajectories: Trajectories[TState, TActionSpace, TAction], update_idx: int
-    ) -> Dict[str, float]:
-        """
-        Update the policy using the trajectories. The policy may use the trajectories to update the action counts.
-
-        Args:
-            trajectories: a `Trajectories` object containing the trajectories.
-            update_idx: the index of the update. Used to avoid updating the policy multiple times with the same data.
-                The policy and reward may be shared by other objects that can call `update_using_trajectories` in
-                `Trainer.update_using_trajectories`.
-        Returns:
-            A dict containing the metrics.
-        """
-
-        output = self.policy.update_using_trajectories(trajectories, update_idx)
-        if self.reward is not None:
-            output |= self.reward.update_using_trajectories(trajectories, update_idx)
-        return output

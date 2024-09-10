@@ -1,8 +1,8 @@
 import abc
 from typing import Generic
 
-from rgfn.api.env_base import TAction, TActionSpace, TState
 from rgfn.api.trajectories import Trajectories
+from rgfn.api.type_variables import TAction, TActionSpace, TState
 
 
 class TrajectoryFilterBase(Generic[TState, TActionSpace, TAction], abc.ABC):

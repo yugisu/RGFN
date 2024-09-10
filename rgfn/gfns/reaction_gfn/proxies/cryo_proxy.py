@@ -2,7 +2,7 @@ from typing import List
 
 import gin
 
-from rgfn.api.env_base import TState
+from rgfn.api.type_variables import TState
 from rgfn.gfns.reaction_gfn.proxies.gneprop_proxy import GNEpropProxy
 
 

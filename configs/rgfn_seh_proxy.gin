@@ -4,6 +4,6 @@ include 'configs/envs/reaction.gin'
 include 'configs/proxies/target/seh.gin'
 
 TanimotoSimilarityModes.proxy_term_threshold = 8.0
-TanimotoSimilarityModes.similarity_threshold = 0.3
+TanimotoSimilarityModes.similarity_threshold = 0.5
 TanimotoSimilarityModes.max_modes = 5000
 Reward.beta = 8

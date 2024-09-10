@@ -4,11 +4,12 @@ import gin
 import numpy as np
 from more_itertools import chunked
 
-from rgfn.api.env_base import EnvBase, TAction, TActionSpace, TState
+from rgfn.api.env_base import EnvBase
 from rgfn.api.policy_base import PolicyBase
 from rgfn.api.reward import Reward
 from rgfn.api.sampler_base import SamplerBase
 from rgfn.api.trajectories import Trajectories
+from rgfn.api.type_variables import TAction, TActionSpace, TState
 
 
 @gin.configurable()

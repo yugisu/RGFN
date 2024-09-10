@@ -1,13 +1,14 @@
 import abc
 from abc import ABC
-from typing import Dict, Generic, Iterator
+from typing import Dict, Generic, Iterator, List
 
-from rgfn.api.env_base import TAction, TActionSpace, TState
 from rgfn.api.sampler_base import SamplerBase
+from rgfn.api.training_hooks_mixin import TrainingHooksMixin
 from rgfn.api.trajectories import Trajectories
+from rgfn.api.type_variables import TAction, TActionSpace, TState
 
 
-class ReplayBufferBase(ABC, Generic[TState, TActionSpace, TAction]):
+class ReplayBufferBase(ABC, Generic[TState, TActionSpace, TAction], TrainingHooksMixin):
     """
     A base class for replay buffers. A replay buffer stores terminal states or trajectories and can sample them
     in backward direction using the provided sampler.
@@ -19,8 +20,13 @@ class ReplayBufferBase(ABC, Generic[TState, TActionSpace, TAction]):
     """
 
     def __init__(self, sampler: SamplerBase[TState, TActionSpace, TAction]):
+        super().__init__()
         assert sampler.env.is_reversed, "The environment should be reversed."
         self.sampler = sampler
+
+    @property
+    def hook_objects(self) -> List["TrainingHooksMixin"]:
+        return [self.sampler]
 
     @abc.abstractmethod
     def add_trajectories(self, trajectories: Trajectories[TState, TActionSpace, TAction]):
@@ -73,54 +79,3 @@ class ReplayBufferBase(ABC, Generic[TState, TActionSpace, TAction]):
             None
         """
         ...
-
-    @abc.abstractmethod
-    def set_device(self, device: str):
-        """
-        Set the device on which to perform the computations.
-
-        Args:
-            device: a device to set.
-
-        Returns:
-            None
-        """
-        ...
-
-    @abc.abstractmethod
-    def clear_sampling_cache(self):
-        """
-        Clear the sampling cache of the replay buffer and underlying objects (e.g. samplers with policies). Some
-            objects may use caching to speed up the sampling process.
-
-        Returns:
-            None
-        """
-        ...
-
-    @abc.abstractmethod
-    def clear_action_embedding_cache(self):
-        """
-        Clear the action embedding cache of the replay buffer and underlying objects (e.g. samplers with policies). Some
-           policies may embed and cache the actions.
-
-        Returns:
-            None
-        """
-        ...
-
-    def update_using_trajectories(
-        self, trajectories: Trajectories[TState, TActionSpace, TAction], update_idx: int
-    ) -> Dict[str, float]:
-        """
-        Update the replay buffer using the trajectories. The replay buffer may use the trajectories to update the action counts.
-
-        Args:
-            trajectories: a `Trajectories` object containing the trajectories.
-            update_idx: the index of the update. Used to avoid updating the replay buffer multiple times with the same data.
-                The sampler may be shared by other objects that can call `update_using_trajectories` in
-                `Trainer.update_using_trajectories`.
-        Returns:
-            A dict containing the metrics.
-        """
-        return self.sampler.update_using_trajectories(trajectories, update_idx)

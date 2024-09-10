@@ -1,26 +1,34 @@
 import abc
 from functools import singledispatch
-from typing import Callable, Dict, Generic, List, Sequence, Tuple, Type, TypeVar
+from typing import Any, Callable, Dict, Generic, List, Sequence, Tuple, Type, TypeVar
 
 import torch
+from torch import nn
 from torch.distributions import Categorical
 from torchtyping import TensorType
 
-from rgfn.api.env_base import TAction, TState
 from rgfn.api.policy_base import PolicyBase
+from rgfn.api.trajectories import Trajectories
+from rgfn.api.type_variables import TAction, TState
 from rgfn.shared.policies.uniform_policy import TIndexedActionSpace
+from rgfn.shared.proxies.cached_proxy import THashableState
 
 TSharedEmbeddings = TypeVar("TSharedEmbeddings")
 
 
 class FewPhasePolicyBase(
-    PolicyBase[TState, TIndexedActionSpace, TAction],
-    Generic[TState, TIndexedActionSpace, TAction, TSharedEmbeddings],
+    PolicyBase[THashableState, TIndexedActionSpace, TAction],
+    Generic[THashableState, TIndexedActionSpace, TAction, TSharedEmbeddings],
     abc.ABC,
+    nn.Module,
 ):
+    def __init__(self):
+        super().__init__()
+        self.device = "cpu"
+
     @abc.abstractmethod
     def get_shared_embeddings(
-        self, states: List[TState], action_spaces: List[TIndexedActionSpace]
+        self, states: List[THashableState], action_spaces: List[TIndexedActionSpace]
     ) -> TSharedEmbeddings:
         ...
 
@@ -30,17 +38,14 @@ class FewPhasePolicyBase(
         self,
     ) -> Dict[
         Type[TIndexedActionSpace],
-        Callable[[List[TState], List[TIndexedActionSpace], TSharedEmbeddings], TensorType[float]],
+        Callable[
+            [List[THashableState], List[TIndexedActionSpace], TSharedEmbeddings], TensorType[float]
+        ],
     ]:
         ...
 
-    @property
-    @abc.abstractmethod
-    def device(self) -> str:
-        ...
-
     def sample_actions(
-        self, states: List[TState], action_spaces: List[TIndexedActionSpace]
+        self, states: List[THashableState], action_spaces: List[TIndexedActionSpace]
     ) -> List[TAction]:
         shared_embeddings = self.get_shared_embeddings(states, action_spaces)
 
@@ -56,8 +61,8 @@ class FewPhasePolicyBase(
                 continue
             phase_states = [states[idx] for idx in phase_indices]
             phase_action_spaces = [action_spaces[idx] for idx in phase_indices]
-
             logits = forward_fn(phase_states, phase_action_spaces, shared_embeddings)
+
             phase_actions = self._sample_actions_from_logits(logits, phase_action_spaces)
             actions.extend(phase_actions)
             action_to_state_idx.extend(phase_indices)
@@ -110,7 +115,9 @@ class FewPhasePolicyBase(
             phase_states = [states[idx] for idx in phase_indices]
             phase_action_spaces = [action_spaces[idx] for idx in phase_indices]
             phase_actions = [actions[idx] for idx in phase_indices]
+
             logits = forward_fn(phase_states, phase_action_spaces, shared_embeddings)
+
             phase_log_probs = self._select_actions_log_probs(
                 logits, phase_action_spaces, phase_actions
             )
@@ -130,7 +137,6 @@ class FewPhasePolicyBase(
         logits: TensorType[float],
         action_spaces: Sequence[TIndexedActionSpace],
         actions: Sequence[TAction],
-        compute_logits: bool = False,
     ) -> TensorType[float]:
         """
         A helper function to select the log probabilities of the actions.
@@ -152,5 +158,9 @@ class FewPhasePolicyBase(
             idx * max_num_actions + action_idx for idx, action_idx in enumerate(action_indices)
         ]
         action_tensor_indices = torch.tensor(action_indices).long().to(self.device)
+
         log_probs = torch.log_softmax(logits, dim=1)
         return torch.index_select(log_probs.view(-1), index=action_tensor_indices, dim=0)
+
+    def compute_states_log_flow(self, states: List[THashableState]) -> TensorType[float]:
+        raise NotImplementedError()

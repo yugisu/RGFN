@@ -7,7 +7,7 @@ import torch
 from wurlitzer import pipes
 
 from rgfn import ROOT_DIR
-from rgfn.api.env_base import TState
+from rgfn.api.type_variables import TState
 from rgfn.gfns.reaction_gfn.api.reaction_api import (
     ReactionState,
     ReactionStateEarlyTerminal,
@@ -53,6 +53,3 @@ class GNEpropProxy(CachedProxyBase[ReactionState], abc.ABC):
             )
 
         return scores
-
-    def set_device(self, device: str):
-        self.device = device

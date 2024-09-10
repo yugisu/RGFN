@@ -14,6 +14,7 @@ class CachedProxyBase(ProxyBase[THashableState], abc.ABC):
     """
 
     def __init__(self):
+        super().__init__()
         self.cache: Dict[THashableState, Dict[str, float] | List[float]] = {}
         self.total_calls = 0
         self.device = "cpu"
@@ -66,5 +67,5 @@ class CachedProxyBase(ProxyBase[THashableState], abc.ABC):
             components = {key: component_dict[key] for key in component_dict if key != "value"}
         return ProxyOutput(value=value, components=components)
 
-    def set_device(self, device: str):
+    def set_device(self, device: str, recursive: bool = True):
         self.device = device

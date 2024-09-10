@@ -9,9 +9,9 @@ from torch import nn
 from torch.distributions import Categorical
 from torchtyping import TensorType
 
-from rgfn.api.env_base import TAction, TActionSpace, TState
 from rgfn.api.policy_base import PolicyBase
 from rgfn.api.trajectories import Trajectories
+from rgfn.api.type_variables import TAction, TActionSpace, TState
 from rgfn.gfns.reaction_gfn.api.data_structures import Molecule, Reaction
 from rgfn.gfns.reaction_gfn.api.reaction_api import (
     ReactionAction,
@@ -53,7 +53,6 @@ class SharedEmbeddings:
 @gin.configurable()
 class ReactionForwardPolicy(
     FewPhasePolicyBase[ReactionState, ReactionActionSpace, ReactionAction, SharedEmbeddings],
-    nn.Module,
 ):
     def __init__(
         self,
@@ -122,7 +121,9 @@ class ReactionForwardPolicy(
             ReactionActionSpace0Invalid: self._forward_early_terminate,
         }
 
-        self._device = "cpu"
+    @property
+    def hook_objects(self) -> List["TrainingHooksMixin"]:
+        return [self.b_action_embedding_fn]
 
     @property
     def action_space_to_forward_fn(
@@ -132,15 +133,6 @@ class ReactionForwardPolicy(
         Callable[[List[TState], List[TIndexedActionSpace], TSharedEmbeddings], TensorType[float]],
     ]:
         return self._action_space_type_to_forward_fn
-
-    @property
-    def device(self) -> str:
-        return self._device
-
-    def set_device(self, device: str):
-        self.to(device)
-        self.b_action_embedding_fn.set_device(device)
-        self._device = device
 
     def _forward_0(
         self,
@@ -294,12 +286,3 @@ class ReactionForwardPolicy(
             molecule_reaction_to_idx=molecule_and_reaction_to_idx,
             all_embeddings=embeddings,
         )
-
-    def compute_states_log_flow(self, states: List[ReactionState]) -> TensorType[float]:
-        raise NotImplementedError()
-
-    def clear_action_embedding_cache(self) -> None:
-        self.b_action_embedding_fn.clear_cache()
-
-    def clear_sampling_cache(self) -> None:
-        pass

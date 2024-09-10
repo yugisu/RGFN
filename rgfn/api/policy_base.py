@@ -3,11 +3,12 @@ from typing import Dict, Generic, List
 
 from torchtyping import TensorType
 
-from rgfn.api.env_base import TAction, TActionSpace, TState
+from rgfn.api.training_hooks_mixin import TrainingHooksMixin
 from rgfn.api.trajectories import Trajectories
+from rgfn.api.type_variables import TAction, TActionSpace, TState
 
 
-class PolicyBase(Generic[TState, TActionSpace, TAction], ABC):
+class PolicyBase(Generic[TState, TActionSpace, TAction], ABC, TrainingHooksMixin):
     """
     A base class for policies. Given the current batch of states, a policy samples action. It also computes
     the log probabilities when chosen actions and following states are provided.
@@ -68,54 +69,3 @@ class PolicyBase(Generic[TState, TActionSpace, TAction], ABC):
             a tensor of log flows of shape `(n_states,)`.
         """
         ...
-
-    @abstractmethod
-    def set_device(self, device: str):
-        """
-        Set the device on which to perform the computations.
-
-        Args:
-            device: a string representing the device.
-
-        Returns:
-            None
-        """
-        ...
-
-    @abstractmethod
-    def clear_sampling_cache(self) -> None:
-        """
-        Clear the sampling cache. Some policies may use caching to speed up the sampling process.
-
-        Returns:
-            None
-        """
-        ...
-
-    @abstractmethod
-    def clear_action_embedding_cache(self) -> None:
-        """
-        Clear the action embedding cache. Some policies may embed the actions and cache the embeddings to speed up
-            the computation of log probabilities.
-
-        Returns:
-            None
-        """
-        ...
-
-    def update_using_trajectories(
-        self, trajectories: Trajectories[TState, TActionSpace, TAction], update_idx: int
-    ) -> Dict[str, float]:
-        """
-        Update the policy using the trajectories.
-
-        Args:
-            trajectories: a batch of trajectories.
-            update_idx: the index of the update. Used to avoid updating the policy multiple times with the same data.
-                The policy may be shared by other objects that can call `update_using_trajectories` in
-                `Trainer.update_using_trajectories`.
-
-        Returns:
-            A dict containing the metrics.
-        """
-        return {}

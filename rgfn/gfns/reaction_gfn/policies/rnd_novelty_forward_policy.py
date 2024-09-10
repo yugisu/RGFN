@@ -10,9 +10,9 @@ from torch.distributions import Categorical
 from torch.nn import Parameter
 from torchtyping import TensorType
 
-from rgfn.api.env_base import TAction, TActionSpace, TState
 from rgfn.api.policy_base import PolicyBase
 from rgfn.api.trajectories import Trajectories
+from rgfn.api.type_variables import TAction, TActionSpace, TState
 from rgfn.gfns.reaction_gfn.api.data_structures import Molecule, Reaction
 from rgfn.gfns.reaction_gfn.api.reaction_api import (
     ReactionAction,
@@ -58,7 +58,6 @@ class SharedEmbeddings:
 @gin.configurable()
 class RNDNoveltyForwardPolicy(
     FewPhasePolicyBase[ReactionState, ReactionActionSpace, ReactionAction, SharedEmbeddings],
-    nn.Module,
 ):
     def __init__(
         self,
@@ -129,9 +128,11 @@ class RNDNoveltyForwardPolicy(
 
         self.optimizer = torch.optim.Adam(self.parameters(), lr=lr)
 
-        self._device = "cpu"
-        self.last_update_idx = -1
         self.temperature = temperature
+
+    @property
+    def hook_objects(self) -> List["TrainingHooksMixin"]:
+        return [self.predictor_action_embedding_a, self.predictor_action_embedding_b]
 
     def parameters(self, recurse: bool = True) -> Iterator[Parameter]:
         yield from self.predictor_gnn.parameters()
@@ -149,14 +150,6 @@ class RNDNoveltyForwardPolicy(
         Callable[[List[TState], List[TIndexedActionSpace], TSharedEmbeddings], TensorType[float]],
     ]:
         return self._action_space_type_to_forward_fn
-
-    @property
-    def device(self) -> str:
-        return self._device
-
-    def set_device(self, device: str):
-        self.to(device)
-        self._device = device
 
     def _forward_0(
         self,
@@ -391,20 +384,9 @@ class RNDNoveltyForwardPolicy(
             all_predictor_embeddings=predictor_embeddings,
         )
 
-    def clear_action_embedding_cache(self) -> None:
-        self.predictor_action_embedding_a.clear_cache()
-        self.predictor_action_embedding_b.clear_cache()
-
-    def clear_sampling_cache(self) -> None:
-        pass
-
-    def update_using_trajectories(
-        self, trajectories: Trajectories[TState, TActionSpace, TAction], update_idx: int
+    def on_end_computing_objective(
+        self, iteration_idx: int, trajectories: Trajectories, recursive: bool = True
     ) -> Dict[str, float]:
-        if update_idx == self.last_update_idx:
-            return {}
-        self.last_update_idx = update_idx
-
         self.optimizer.zero_grad()
         states = trajectories.get_non_last_states_flat()
         action_spaces = trajectories.get_forward_action_spaces_flat()
@@ -414,15 +396,12 @@ class RNDNoveltyForwardPolicy(
         self.optimizer.step()
         return {"novelty_policy_loss": loss.item()}
 
-    def compute_states_log_flow(self, states: List[TState]) -> TensorType[float]:
-        pass
-
     def compute_state_action_novelty(
         self, states: List[TState], action_spaces: List[TIndexedActionSpace], actions: List[TAction]
     ) -> TensorType[float]:
         # This part can be optimized: we don't need to compute novelty for the entire action spaces, but only
         # for the actions that were actually taken.
-        
+
         return self.compute_action_log_probs(states, action_spaces, actions)
 
     def _select_actions_log_probs(

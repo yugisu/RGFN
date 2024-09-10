@@ -1,12 +1,11 @@
 import abc
 from pathlib import Path
-from typing import Any, Dict, Generic, Literal, Optional, Sequence
+from typing import Any, Dict, Generic, List, Literal, Optional, Sequence
 
 import gin
 import torch
 from tqdm import tqdm
 
-from rgfn.api.env_base import TAction, TActionSpace, TState
 from rgfn.api.trajectories import Trajectories
 from rgfn.trainer.artifacts.artifacts_base import ArtifactsBase, ArtifactsList
 from rgfn.trainer.logger.logger_base import LoggerBase
@@ -16,6 +15,8 @@ from rgfn.utils.helpers import dict_mean, infer_metric_direction
 from ..api.objective_base import ObjectiveBase
 from ..api.replay_buffer_base import ReplayBufferBase
 from ..api.sampler_base import SamplerBase
+from ..api.training_hooks_mixin import TrainingHooksMixin
+from ..api.type_variables import TAction, TActionSpace, TState
 from .logger.dummy_logger import DummyLogger
 from .optimizers.lr_scheduler import LRScheduler
 from .optimizers.optimizer_base import OptimizerBase
@@ -26,7 +27,7 @@ from .trajectory_filters.trajectory_filter_base import (
 
 
 @gin.configurable()
-class Trainer(Generic[TState, TActionSpace, TAction]):
+class Trainer(Generic[TState, TActionSpace, TAction], TrainingHooksMixin):
     """
     The class to train a model using the training loop.
     """
@@ -96,6 +97,7 @@ class Trainer(Generic[TState, TActionSpace, TAction]):
             device: the device to use for training.
         """
         assert metric_direction in ("auto", "min", "max")
+        self.device = "cpu"
         self.run_dir = Path(run_dir)
         self.train_forward_sampler = train_forward_sampler
         self.train_backward_sampler = train_backward_sampler
@@ -134,16 +136,7 @@ class Trainer(Generic[TState, TActionSpace, TAction]):
         if self.lr_scheduler:
             self.lr_scheduler.initialize(optimizer=self.optimizer.optimizer)
 
-        self.objective.set_device(device)
-        if self.train_forward_sampler:
-            self.train_forward_sampler.set_device(device)
-        if self.train_backward_sampler:
-            self.train_backward_sampler.set_device(device)
-        if self.train_replay_buffer:
-            self.train_replay_buffer.set_device(device)
-        if self.valid_sampler:
-            self.valid_sampler.set_device(device)
-
+        self.set_device(device)
         self.start_iteration = 0
         if resume_path is not None:
             resume_path = Path(resume_path)
@@ -166,6 +159,19 @@ class Trainer(Generic[TState, TActionSpace, TAction]):
         self.sanity_check_evaluation = sanity_check_evaluation
         self.trajectory_filter = trajectory_filter or IdentityTrajectoryFilter()
 
+    @property
+    def hook_objects(self) -> List["TrainingHooksMixin"]:
+        hooks = [self.objective]
+        if self.train_replay_buffer:
+            hooks.append(self.train_replay_buffer)
+        if self.train_forward_sampler:
+            hooks.append(self.train_forward_sampler)
+        if self.train_backward_sampler:
+            hooks.append(self.train_backward_sampler)
+        if self.valid_sampler:
+            hooks.append(self.valid_sampler)
+        return hooks
+
     def sample_training_trajectories(self) -> Trajectories[TState, TActionSpace, TAction]:
         """
         Sample the training trajectories from the samplers and replay buffer.
@@ -174,8 +180,6 @@ class Trainer(Generic[TState, TActionSpace, TAction]):
             a `Trajectories` object containing the training trajectories.
         """
         trajectories_list = []
-        self.clear_sampling_cache()
-        self.clear_action_embedding_cache()
         if self.train_replay_buffer and self.train_replay_n_trajectories > 0:
             for trajectories in self.train_replay_buffer.get_trajectories_iterator(
                 n_total_trajectories=self.train_replay_n_trajectories,
@@ -198,8 +202,6 @@ class Trainer(Generic[TState, TActionSpace, TAction]):
             ):
                 trajectories_list.append(trajectories)
 
-        self.clear_sampling_cache()
-        self.clear_action_embedding_cache()
         trajectories = Trajectories.from_trajectories(trajectories_list)
         return trajectories
 
@@ -277,24 +279,33 @@ class Trainer(Generic[TState, TActionSpace, TAction]):
         for i in (pbar := tqdm(range(self.start_iteration, self.n_iterations))):
             self.optimizer.zero_grad()
 
+            hook_update_dict = self.on_start_sampling(i)
             trajectories = self.sample_training_trajectories()
             trajectories = self.trajectory_filter(trajectories)
+            hook_update_dict |= self.on_end_sampling(i, trajectories)
+
+            hook_update_dict |= self.on_start_computing_objective(i, trajectories)
             objective = self.objective.compute_objective_output(trajectories=trajectories)
+            hook_update_dict |= self.on_end_computing_objective(i, trajectories)
 
             objective.loss.backward()
+            for name, param in self.objective.forward_policy.named_parameters():
+                if param.grad is None:
+                    print(f"None in {name}")
+                elif torch.isnan(param.grad).any():
+                    print(f"Nan in {name}")
+
             torch.nn.utils.clip_grad_norm_(self.objective.parameters(), self.gradient_clipping_norm)
             self.optimizer.step()
             if self.lr_scheduler is not None:
                 self.lr_scheduler.step()
-
-            update_metrics = self.update_using_trajectories(trajectories=trajectories, update_idx=i)
 
             pbar.set_description(f"Loss: {objective.loss.item():.4f}")
             metrics = (
                 self.train_metrics.compute_metrics(trajectories=trajectories)
                 | {"loss": objective.loss.item()}
                 | objective.metrics
-                | update_metrics
+                | hook_update_dict
             )
             self.logger.log_metrics(metrics=metrics, prefix="train")
             artifacts = self.train_artifacts.compute_artifacts(trajectories=trajectories)
@@ -339,64 +350,3 @@ class Trainer(Generic[TState, TActionSpace, TAction]):
             None
         """
         self.logger.close()
-
-    def clear_sampling_cache(self) -> None:
-        """
-        Clear the sampling cache of the samplers and replay buffer.
-
-        Returns:
-            None
-        """
-        if self.train_forward_sampler:
-            self.train_forward_sampler.clear_sampling_cache()
-        if self.train_backward_sampler:
-            self.train_backward_sampler.clear_sampling_cache()
-        if self.train_replay_buffer:
-            self.train_replay_buffer.clear_sampling_cache()
-        if self.valid_sampler:
-            self.valid_sampler.clear_sampling_cache()
-        self.objective.clear_sampling_cache()
-
-    def clear_action_embedding_cache(self) -> None:
-        """
-        Clear the action embedding cache of the samplers and replay buffer.
-
-        Returns:
-            None
-        """
-        if self.train_forward_sampler:
-            self.train_forward_sampler.clear_action_embedding_cache()
-        if self.train_backward_sampler:
-            self.train_backward_sampler.clear_action_embedding_cache()
-        if self.train_replay_buffer:
-            self.train_replay_buffer.clear_action_embedding_cache()
-        if self.valid_sampler:
-            self.valid_sampler.clear_action_embedding_cache()
-        self.objective.clear_action_embedding_cache()
-
-    def update_using_trajectories(
-        self, trajectories: Trajectories[TState, TActionSpace, TAction], update_idx: int
-    ) -> Dict[str, float]:
-        """
-        Update the forward and backward policies using the trajectories. This method is used to update the policies
-            using the trajectories obtained in the sampling process.
-
-        Args:
-            trajectories: the batch of trajectories obtained in the sampling process.
-            update_idx: the index of the update. Some objects may be shared by objective and samplers and their
-                `update_using_trajectories` method will be called multiple times. To avoid multiple updates using the
-                same data, we provide the underlying `update_using_trajectories` calls with `update_idx`.
-
-        Returns:
-            A dict containing the metrics.
-        """
-        output = self.objective.update_using_trajectories(trajectories, update_idx=update_idx)
-        if self.train_replay_buffer:
-            output |= self.train_replay_buffer.update_using_trajectories(trajectories, update_idx)
-        if self.train_forward_sampler:
-            output |= self.train_forward_sampler.update_using_trajectories(trajectories, update_idx)
-        if self.train_backward_sampler:
-            output |= self.train_backward_sampler.update_using_trajectories(
-                trajectories, update_idx
-            )
-        return output

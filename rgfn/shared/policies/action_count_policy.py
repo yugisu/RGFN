@@ -5,9 +5,9 @@ import torch
 from torch.distributions import Categorical
 from torchtyping import TensorType
 
-from rgfn.api.env_base import TAction, TActionSpace, TState
 from rgfn.api.policy_base import PolicyBase
 from rgfn.api.trajectories import Trajectories
+from rgfn.api.type_variables import TAction, TActionSpace, TState
 from rgfn.shared.policies.uniform_policy import TIndexedActionSpace
 
 THashableAction = TypeVar("THashableAction", bound=Hashable)
@@ -16,10 +16,10 @@ THashableAction = TypeVar("THashableAction", bound=Hashable)
 @gin.configurable()
 class ActionCountPolicy(PolicyBase[TState, TIndexedActionSpace, THashableAction]):
     def __init__(self, temperature: float = 1.0):
+        super().__init__()
         self.actions_count: Dict[THashableAction, int] = {}
         self.temperature = temperature
         self.device = "cpu"
-        self.last_update_idx = -1
 
     def _forward(self, action_spaces: List[TIndexedActionSpace]) -> TensorType[float]:
         max_action_space_size = max(
@@ -75,24 +75,9 @@ class ActionCountPolicy(PolicyBase[TState, TIndexedActionSpace, THashableAction]
     def compute_states_log_flow(self, states: List[TState]) -> TensorType[float]:
         pass
 
-    def set_device(self, device: str):
-        self.device = device
-
-    def clear_sampling_cache(self) -> None:
-        pass
-
-    def clear_action_embedding_cache(self) -> None:
-        pass
-
-    def update_using_trajectories(
-        self,
-        trajectories: Trajectories[TState, TIndexedActionSpace, THashableAction],
-        update_idx: int,
+    def on_end_computing_objective(
+        self, iteration_idx: int, trajectories: Trajectories, recursive: bool = True
     ) -> Dict[str, float]:
-        if update_idx == self.last_update_idx:
-            return {}
-        self.last_update_idx = update_idx
         for action in trajectories.get_actions_flat():
             self.actions_count[action] = self.actions_count.get(action, 0) + 1
-
         return {}

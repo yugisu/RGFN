@@ -11,7 +11,7 @@ import torch.nn.functional as F
 from rdkit import Chem
 from torch_geometric.nn import NNConv, Set2Set
 
-from rgfn.api.env_base import TState
+from rgfn.api.type_variables import TState
 from rgfn.gfns.reaction_gfn.api.reaction_api import (
     ReactionState,
     ReactionStateEarlyTerminal,
@@ -196,7 +196,7 @@ class SehMoleculeProxy(CachedProxyBase[ReactionState]):
     ) -> List[Dict[str, float]] | List[float]:
         return self.model.compute_scores([state.molecule.smiles for state in states])
 
-    def set_device(self, device: str):
+    def set_device(self, device: str, recursive: bool = True):
         self.device = device
         self.model.device = device
         self.model.model.to(device)

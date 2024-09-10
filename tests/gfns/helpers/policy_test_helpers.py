@@ -1,8 +1,9 @@
 import torch
 
 from rgfn import RandomSampler, UniformPolicy
-from rgfn.api.env_base import EnvBase, TAction, TState
+from rgfn.api.env_base import EnvBase
 from rgfn.api.policy_base import PolicyBase
+from rgfn.api.type_variables import TAction, TState
 from rgfn.shared.policies.uniform_policy import TIndexedActionSpace
 from rgfn.utils.helpers import seed_everything
 

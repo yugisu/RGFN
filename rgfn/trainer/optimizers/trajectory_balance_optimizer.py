@@ -5,6 +5,11 @@ from torch import nn
 from .optimizer_base import OptimizerBase
 
 
+def is_logZ(name):
+    log_z_keywords = ["logZ", "log_z", "log_Z"]
+    return any(keyword in name for keyword in log_z_keywords)
+
+
 @gin.configurable()
 class TrajectoryBalanceOptimizer(OptimizerBase):
     """
@@ -26,11 +31,11 @@ class TrajectoryBalanceOptimizer(OptimizerBase):
     def initialize(self, model: nn.Module):
         parameters = [
             {
-                "params": [p for n, p in model.named_parameters() if "logZ" in n],
+                "params": [p for n, p in model.named_parameters() if is_logZ(n)],
                 "lr": self.lr * self.logZ_multiplier,
             },
             {
-                "params": [p for n, p in model.named_parameters() if "logZ" not in n],
+                "params": [p for n, p in model.named_parameters() if not is_logZ(n)],
                 "lr": self.lr,
             },
         ]

@@ -24,7 +24,7 @@ class RewardOutput:
     proxy: TensorType[float]
     proxy_components: Dict[str, TensorType[float]] | None = None
 
-    def set_device(self, device: str):
+    def set_device(self, device: str, recursive: bool = True):
         """
         Set the device on which to perform the computations.
 

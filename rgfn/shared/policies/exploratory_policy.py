@@ -5,9 +5,9 @@ import gin
 import numpy as np
 from torchtyping import TensorType
 
-from rgfn.api.env_base import TAction, TActionSpace, TState
 from rgfn.api.policy_base import PolicyBase
 from rgfn.api.trajectories import Trajectories
+from rgfn.api.type_variables import TAction, TActionSpace, TState
 
 
 @gin.configurable()
@@ -32,6 +32,7 @@ class ExploratoryPolicy(PolicyBase[TState, TActionSpace, TAction]):
         second_policy: PolicyBase[TState, TActionSpace, TAction],
         first_policy_weight: float,
     ):
+        super().__init__()
         self.first_policy = first_policy
         self.second_policy = second_policy
         self.first_policy_weight = first_policy_weight
@@ -91,24 +92,5 @@ class ExploratoryPolicy(PolicyBase[TState, TActionSpace, TAction]):
     ) -> TensorType[float]:
         raise NotImplementedError()
 
-    def set_device(self, device: str):
-        self.first_policy.set_device(device)
-        self.second_policy.set_device(device)
-
-    def clear_action_embedding_cache(self) -> None:
-        self.first_policy.clear_action_embedding_cache()
-        self.second_policy.clear_action_embedding_cache()
-
-    def clear_sampling_cache(self) -> None:
-        self.first_policy.clear_sampling_cache()
-        self.second_policy.clear_sampling_cache()
-
     def compute_states_log_flow(self, states: List[TState]) -> TensorType[float]:
         raise NotImplementedError()
-
-    def update_using_trajectories(
-        self, trajectories: Trajectories[TState, TActionSpace, TAction], update_idx: int
-    ) -> Dict[str, float]:
-        output_first = self.first_policy.update_using_trajectories(trajectories, update_idx)
-        output_second = self.second_policy.update_using_trajectories(trajectories, update_idx)
-        return output_first | output_second

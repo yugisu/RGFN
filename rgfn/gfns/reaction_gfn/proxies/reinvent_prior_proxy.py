@@ -37,7 +37,7 @@ class ReinventPriorProxy(CachedProxyBase[ReactionState]):
         self.collate_fn = collate_fn
         self.temperature = temperature
 
-    def set_device(self, device: str):
+    def set_device(self, device: str, recursive: bool = True):
         self.device = device
         self.prior.device = device
         self.prior.network.to(device)

@@ -4,8 +4,9 @@ from typing import Dict, Generic, List
 
 from torchtyping import TensorType
 
-from rgfn.api.env_base import TState
+from rgfn.api.training_hooks_mixin import TrainingHooksMixin
 from rgfn.api.trajectories import Trajectories
+from rgfn.api.type_variables import TState
 
 
 @dataclass
@@ -20,7 +21,7 @@ class ProxyOutput(Generic[TState]):
     components: Dict[str, TensorType[float]] | None = None
 
 
-class ProxyBase(Generic[TState], ABC):
+class ProxyBase(Generic[TState], ABC, TrainingHooksMixin):
     """
     A base class for proxies. A proxy is a function that takes a batch of states and computes
         values that are then used to compute the GFN reward.
@@ -58,33 +59,3 @@ class ProxyBase(Generic[TState], ABC):
         Whether higher proxy values are "better".
         """
         ...
-
-    @abstractmethod
-    def set_device(self, device: str):
-        """
-        Set the device on which to perform the computations.
-
-        Args:
-            device: a string representing the device.
-
-        Returns:
-            None
-        """
-        ...
-
-    def update_using_trajectories(
-        self, trajectories: Trajectories, update_idx: int
-    ) -> Dict[str, float]:
-        """
-        Update the proxy with the trajectories.
-
-        Args:
-            trajectories: a list of trajectories.
-            update_idx: the index of the update. Used to avoid updating the proxy multiple times with the same data.
-                The proxy may be shared by other objects that can call `update_using_trajectories` in
-                `Trainer.update_using_trajectories`.
-
-        Returns:
-            A dict containing the metrics.
-        """
-        return {}
