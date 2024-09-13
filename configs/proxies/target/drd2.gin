@@ -1,0 +1,3 @@
+proxy/gin.singleton.constructor = @DRD2Proxy
+train_proxy = @proxy/gin.singleton()
+valid_proxy = %train_proxy
