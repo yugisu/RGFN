@@ -11,7 +11,7 @@ To create the conda environment, run the following commands:
 conda create --name rgfn python=3.11.8 -y
 conda activate rgfn
 
-# If using CUDA:
+# If using CUDA (NOTE: this assumes CUDA 11.8, replace with your CUDA version):
 pip install torch==2.3.0 --index-url https://download.pytorch.org/whl/cu118
 pip install dgl==2.2.1+cu118 -f https://data.dgl.ai/wheels/torch-2.3/cu118/repo.html
 
@@ -35,6 +35,33 @@ on other partition, you can create a symlink to the desired location:
 ln -s <your_path> experiments
 ```
 
+Similarly, if you are using the docking proxy, the default installation path points to `quickvina_dir`. To make this work with your Vina-GPU-2.1 installation path, you can create a symlink:
+
+```bash
+ln -s <your-Vina-GPU-2.1_installation_path> quickvina_dir
+```
+
+### Setup Vina-GPU-2.1
+Before following the instructions below, **please read these important notes**:
+1. The user-specified workspace directory must be a full path.
+2. The Vina-GPU-2.1 docking proxy requires a system-wide installation of CUDA to work on GPU (loaded by, e.g., `module load cuda/11.8`).
+3. The setup.sh script installs Boost 1.83.0 to the workspace directory. If you would like to use a different version of boost, you will need to modify the setup.sh script.
+
+To set up QV2GPU for use in the QV2GPU rescoring proxy, run the following command:
+
+```bash
+sh scripts/install_qv2gpu.sh <workspace_directory>
+```
+
+### Setup Gnina
+
+To set up Gnina for use in the Gnina rescoring proxy, run the following command:
+
+```bash
+sh external/setup_gnina.sh
+```
+**NOTE:** Gnina rescoring changes the range of rewards to (0, 1). Because of that, it will be necessary to adjust `Reward.beta` parameter when compared to standard docking. Assuming the default beta of 4 for docking scores, a reasonable value would be 48, the default beta for the senolytic proxy.
+
 ### Setup REINVENT priors
 
 To setup environment for REINVENT priors, run the following commands:
@@ -42,7 +69,7 @@ To setup environment for REINVENT priors, run the following commands:
 ```bash
 pip install xxhash==3.4.1 molvs==0.1.1 tensorboard==2.16.2 tomli==2.0.1 pathos==0.3.2 numpy==1.26.4 mmpdb==2.1
 
-# If using CUDA:
+# If using CUDA (NOTE: this assumes CUDA 11.8, replace with your CUDA version):
 pip install torchvision==0.18.1+cu118 --no-deps --index-url https://download.pytorch.org/whl/cu118
 
 # If using CPU:
