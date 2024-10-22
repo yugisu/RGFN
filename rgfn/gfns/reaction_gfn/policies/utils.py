@@ -8,6 +8,13 @@ from torchtyping import TensorType
 from rgfn.gfns.reaction_gfn.api.data_structures import Molecule, Reaction
 
 
+def counts_to_batch_indices(counts: Sequence[int], device: str | torch.device) -> torch.Tensor:
+    counts = torch.tensor(counts, device=device) if not isinstance(counts, torch.Tensor) else counts
+    indices = torch.arange(len(counts), device=device)
+    batch = torch.repeat_interleave(indices, counts).long()  # e.g. [0, 0, 1, 1, 1, 2, 2, 2]
+    return batch
+
+
 def to_dense_embeddings(
     embeddings: torch.Tensor,
     counts: Sequence[int],
@@ -24,13 +31,7 @@ def to_dense_embeddings(
         node_embeddings: embeddings in a dense format, i.e. [batch_size, max_num_nodes or max_num_edges, hidden_size]
         mask: a mask indicating which nodes are real and which are padding, i.e. [batch_size, max_num_nodes]
     """
-    counts = (
-        torch.tensor(counts, device=embeddings.device)
-        if not isinstance(counts, torch.Tensor)
-        else counts
-    )
-    indices = torch.arange(len(counts), device=embeddings.device)
-    batch = torch.repeat_interleave(indices, counts).long()  # e.g. [0, 0, 1, 1, 1, 2, 2, 2]
+    batch = counts_to_batch_indices(counts, device=embeddings.device)
     return to_dense_batch(
         embeddings, batch, fill_value=fill_value
     )  # that's the only reason we have torch_geometric in the requirements

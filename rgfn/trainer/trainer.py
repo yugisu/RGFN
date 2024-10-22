@@ -289,12 +289,6 @@ class Trainer(Generic[TState, TActionSpace, TAction], TrainingHooksMixin):
             hook_update_dict |= self.on_end_computing_objective(i, trajectories)
 
             objective.loss.backward()
-            for name, param in self.objective.forward_policy.named_parameters():
-                if param.grad is None:
-                    print(f"None in {name}")
-                elif torch.isnan(param.grad).any():
-                    print(f"Nan in {name}")
-
             torch.nn.utils.clip_grad_norm_(self.objective.parameters(), self.gradient_clipping_norm)
             self.optimizer.step()
             if self.lr_scheduler is not None:

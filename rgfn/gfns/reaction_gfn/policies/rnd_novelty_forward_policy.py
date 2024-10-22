@@ -69,15 +69,15 @@ class RNDNoveltyForwardPolicy(
         temperature: float = 1.0,
     ):
         super().__init__()
-        self.reactions = data_factory.get_reactions()
-        self.num_a_actions = len(self.reactions) + 1
+        self.anchored_reactions = data_factory.get_anchored_reactions()
+        self.num_a_actions = len(self.anchored_reactions) + 1
         self.num_b_actions = len(data_factory.get_fragments())
 
         def _make_gnn():
             return GraphTransformer(
                 x_dim=71,
                 e_dim=4,
-                g_dim=len(self.reactions),
+                g_dim=len(self.anchored_reactions),
                 num_layers=num_layers,
                 num_heads=num_heads,
                 num_emb=hidden_dim,
@@ -242,7 +242,7 @@ class RNDNoveltyForwardPolicy(
         shared_embeddings: SharedEmbeddings,
     ) -> TensorType[float]:
         embedding_indices = [
-            shared_embeddings.molecule_reaction_to_idx[(state.molecule, state.reaction)]
+            shared_embeddings.molecule_reaction_to_idx[(state.molecule, state.anchored_reaction)]
             for state in states
         ]
         embedding_indices = torch.tensor(embedding_indices).long().to(self.device)
@@ -346,7 +346,7 @@ class RNDNoveltyForwardPolicy(
             elif isinstance(action_space, ReactionActionSpaceA):
                 all_molecules.add(state.molecule)
             elif isinstance(action_space, ReactionActionSpaceB):
-                all_molecules_reactions.add((state.molecule, state.reaction))
+                all_molecules_reactions.add((state.molecule, state.anchored_reaction))
             elif isinstance(action_space, ReactionActionSpaceC):
                 for action in action_space.possible_actions:
                     all_molecules.add(action.output_molecule)
@@ -360,23 +360,27 @@ class RNDNoveltyForwardPolicy(
         molecule_graphs = [
             mol2graph(mol.rdkit_mol if mol else None) for mol in molecule_to_idx.keys()
         ]
-        reaction_cond = [one_hot(0, len(self.reactions))] * len(molecule_to_idx)
+        reaction_cond = [one_hot(0, len(self.anchored_reactions))] * len(molecule_to_idx)
 
         molecule_and_reaction_graphs = [
             mol2graph(mol.rdkit_mol) for mol, _ in molecule_and_reaction_to_idx.keys()
         ]
         molecule_and_reaction_cond = [
-            one_hot(r.idx, len(self.reactions)) for _, r in molecule_and_reaction_to_idx.keys()
+            one_hot(r.idx, len(self.anchored_reactions))
+            for _, r in molecule_and_reaction_to_idx.keys()
         ]
 
         graphs = molecule_graphs + molecule_and_reaction_graphs
         conds = reaction_cond + molecule_and_reaction_cond
 
-        graph_batch = mols2batch(graphs).to(self.device)
-        cond_batch = torch.tensor(conds).float().to(self.device)
-
-        target_embeddings = self.target_gnn(graph_batch, cond_batch).detach()
-        predictor_embeddings = self.predictor_gnn(graph_batch, cond_batch)
+        if len(graphs) > 0:
+            graph_batch = mols2batch(graphs).to(self.device)
+            cond_batch = torch.tensor(conds).float().to(self.device)
+            target_embeddings = self.target_gnn(graph_batch, cond_batch).detach()
+            predictor_embeddings = self.predictor_gnn(graph_batch, cond_batch)
+        else:
+            target_embeddings = None
+            predictor_embeddings = None
         return SharedEmbeddings(
             molecule_to_idx=molecule_to_idx,
             molecule_reaction_to_idx=molecule_and_reaction_to_idx,

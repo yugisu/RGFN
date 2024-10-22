@@ -6,7 +6,7 @@ from rdkit import Chem
 
 from rgfn.shared.policies.uniform_policy import IndexedActionSpaceBase
 
-from .data_structures import Molecule, Reaction
+from .data_structures import AnchoredReaction, Molecule, Reaction
 
 
 @dataclass(frozen=True, order=True)
@@ -119,7 +119,7 @@ class ReactionStateA:
 
 @dataclass(frozen=True)
 class ReactionActionA:
-    reaction: Reaction | None
+    anchored_reaction: AnchoredReaction | None
     idx: int
 
     def __repr__(self):
@@ -155,14 +155,15 @@ class ReactionActionSpaceA(IndexedActionSpaceBase[ReactionActionA]):
 @dataclass(frozen=True, order=True)
 class ReactionStateB:
     molecule: Molecule
-    reaction: Reaction
+    anchored_reaction: AnchoredReaction
+    fragments: Tuple[Molecule, ...]
     num_reactions: int
 
     def __repr__(self):
         return str(self)
 
     def __str__(self):
-        return f"SB({self.molecule}, {self.reaction}, {self.num_reactions})"
+        return f"SB({self.molecule}, {self.anchored_reaction}, {self.num_reactions})"
 
 
 @dataclass(frozen=True)
@@ -200,29 +201,31 @@ class ReactionActionSpaceB(IndexedActionSpaceBase[ReactionActionB]):
 @dataclass(frozen=True, order=True)
 class ReactionStateC:
     molecule: Molecule
-    reaction: Reaction
-    fragment: Molecule
+    anchored_reaction: AnchoredReaction
+    fragments: Tuple[Molecule, ...]
     num_reactions: int
 
     def __repr__(self):
         return str(self)
 
     def __str__(self):
-        return f"SC({self.molecule}, {self.reaction}, {self.fragment}, {self.num_reactions})"
+        return (
+            f"SC({self.molecule}, {self.anchored_reaction}, {self.fragments}, {self.num_reactions})"
+        )
 
 
 @dataclass(frozen=True)
 class ReactionActionC:
     input_molecule: Molecule
     input_reaction: Reaction
-    input_fragment: Molecule
+    input_fragments: Tuple[Molecule, ...]
     output_molecule: Molecule
 
     def __repr__(self):
         return str(self)
 
     def __str__(self):
-        return f"AC({self.input_molecule}, {self.input_reaction}, {self.input_fragment}, {self.output_molecule})"
+        return f"AC({self.input_molecule}, {self.input_reaction}, {self.input_fragments}, {self.output_molecule})"
 
 
 @dataclass(frozen=True)

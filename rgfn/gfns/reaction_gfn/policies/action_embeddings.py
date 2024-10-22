@@ -72,7 +72,8 @@ class ReactionsOneHotEmbedding(ActionEmbeddingBase):
     def __init__(self, data_factory: ReactionDataFactory, hidden_dim: int = 64):
         super().__init__(data_factory, hidden_dim)
         self.weights = nn.Parameter(
-            torch.empty(len(data_factory.get_reactions()) + 1, hidden_dim), requires_grad=True
+            torch.empty(len(data_factory.get_anchored_reactions()) + 1, hidden_dim),
+            requires_grad=True,
         )
         init.kaiming_uniform_(self.weights, a=math.sqrt(5))
 

@@ -64,7 +64,11 @@ def grid_search(
                 config_files.append(value)
         gin.clear_config()
         gin.parse_config_files_and_bindings(config_files, bindings=bindings)
-        seed_everything(seed)
+        run_seed = seed
+        for key, value in grid_dict.items():
+            if key == "seed":
+                run_seed = int(value)
+        seed_everything(run_seed)
         trainer = Trainer()
         trainer.logger.log_code("rgfn")
         trainer.logger.log_to_file("\n".join(bindings), "bindings")

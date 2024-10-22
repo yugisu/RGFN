@@ -59,15 +59,17 @@ class ReactionBackwardPolicy(
         backbone_policy: ReactionForwardPolicy | None = None,
     ):
         super().__init__()
-        self.reactions = data_factory.get_reactions()
-        self.reaction_to_idx = {reaction: idx for idx, reaction in enumerate(self.reactions)}
+        self.anchored_reactions = data_factory.get_anchored_reactions()
+        self.reaction_to_idx = {
+            reaction: idx for idx, reaction in enumerate(self.anchored_reactions)
+        }
         self.fragments = data_factory.get_fragments()
         self.use_backbone = backbone_policy is not None
         self.gnn = (
             GraphTransformer(
                 x_dim=71,
                 e_dim=4,
-                g_dim=len(self.reactions),
+                g_dim=len(self.anchored_reactions),
                 num_layers=num_layers,
                 num_heads=num_heads,
                 num_emb=hidden_dim,
@@ -163,7 +165,8 @@ class ReactionBackwardPolicy(
             mol2graph(mol.rdkit_mol) for mol, _ in molecule_and_reaction_to_idx.keys()
         ]
         reaction_cond = [
-            one_hot(r.idx, len(self.reactions)) for _, r in molecule_and_reaction_to_idx.keys()
+            one_hot(r.idx, len(self.anchored_reactions))
+            for _, r in molecule_and_reaction_to_idx.keys()
         ]
 
         graphs = molecule_graphs

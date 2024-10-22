@@ -1,5 +1,4 @@
 ReactionDataFactory.reaction_path = 'data/chemistry.xlsx'
-ReactionDataFactory.fragment_path = 'data/fragments_nodocking.csv'
 ReactionDataFactory.docking = False
 data_factory/gin.singleton.constructor = @ReactionDataFactory
 data_factory = @data_factory/gin.singleton()

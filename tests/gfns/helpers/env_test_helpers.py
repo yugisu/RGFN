@@ -1,4 +1,4 @@
-from rgfn import RandomSampler, UniformPolicy
+from rgfn import RandomSampler, RGFNTrajectoryFilter, UniformPolicy
 from rgfn.api.env_base import EnvBase
 from rgfn.api.type_variables import TAction, TState
 from rgfn.shared.policies.uniform_policy import TIndexedActionSpace
@@ -6,7 +6,7 @@ from rgfn.utils.helpers import seed_everything
 
 
 def helper__test_env__forward_backward_consistency(
-    env: EnvBase[TState, TIndexedActionSpace, TAction], n_trajectories: int
+    env: EnvBase[TState, TIndexedActionSpace, TAction], n_trajectories: int, seed: int = 42
 ):
     """
     A helper function that tests whether the forward pass of the environment can be obtained by applying the backward
@@ -18,7 +18,7 @@ def helper__test_env__forward_backward_consistency(
     Returns:
         None
     """
-    seed_everything(42)
+    seed_everything(seed)
     sampler = RandomSampler(
         policy=UniformPolicy(),
         env=env,
@@ -47,6 +47,7 @@ def helper__test_env__backward_forward_consistency(
     env: EnvBase[TState, TIndexedActionSpace, TAction],
     n_trajectories: int,
     sample_directly_from_reversed_env: bool = True,
+    seed: int = 42,
 ):
     """
     A helper function that tests whether the backward pass of the environment can be obtained by applying the forward
@@ -61,7 +62,7 @@ def helper__test_env__backward_forward_consistency(
     Returns:
         None
     """
-    seed_everything(42)
+    seed_everything(seed)
 
     if sample_directly_from_reversed_env:
         sampler = RandomSampler(

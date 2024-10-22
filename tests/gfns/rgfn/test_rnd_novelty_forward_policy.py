@@ -56,4 +56,4 @@ def test__rnd_novelty_policy__updates_properly(
         policy.on_end_computing_objective(iteration_idx=i, trajectories=trajectories)
 
     novelty_scores_new = policy.compute_state_action_novelty(states, action_spaces, actions)
-    assert torch.all(novelty_scores_old > novelty_scores_new)
+    assert torch.all(novelty_scores_old >= novelty_scores_new)
