@@ -82,6 +82,7 @@ class VinaDocking:
         preparator: callable = None,
         vina_cwd: str = None,
         gpu_ids: Union[int, List[int]] = 0,
+        docking_attempts: int = 10,
         print_msgs: bool = True,
         print_vina_output: bool = False,
         debug: bool = False,
@@ -102,6 +103,7 @@ class VinaDocking:
                 and incorrect openCL pathing)
             - gpu_ids: GPU ids to use for multi-GPU docking (0 is default for single-GPU nodes). If None, \
                 use all GPUs.
+            - docking_attempts: Number of docking attempts to make on each GPU.
             - print_msgs: Show Python print messages in console (True) or not (False)
             - print_vina_output: Show Vina docking output in console (True) or not (False)
             - debug: Profiling the Vina docking process and ligand preparation.
@@ -154,6 +156,7 @@ class VinaDocking:
         self.preparator = preparator
         self.vina_cwd = vina_cwd
         self.gpu_ids = gpu_ids
+        self.docking_attempts = docking_attempts
         self.print_msgs = print_msgs
         self.print_vina_output = print_vina_output
         self.debug = debug
@@ -249,17 +252,24 @@ class VinaDocking:
             print("Ligands prepared. Docking...")
 
         vina_cmd_prefixes = [f"CUDA_VISIBLE_DEVICES={gpu_id} " for gpu_id in self.gpu_ids]
-        if self.debug:
-            self.docking_profiler.time_it(
-                self._run_vina,
-                tmp_config_file_paths,
-                vina_cmd_prefixes=vina_cmd_prefixes,
-                blocking=False,
-            )
-        else:
-            self._run_vina(
-                tmp_config_file_paths, vina_cmd_prefixes=vina_cmd_prefixes, blocking=False
-            )
+
+        # Run docking attempts multiple times on each GPU in case of failure.
+        for attempt in range(self.docking_attempts):
+            if self.debug:
+                self.docking_profiler.time_it(
+                    self._run_vina,
+                    tmp_config_file_paths,
+                    vina_cmd_prefixes=vina_cmd_prefixes,
+                    blocking=False,
+                )
+            else:
+                self._run_vina(
+                    tmp_config_file_paths, vina_cmd_prefixes=vina_cmd_prefixes, blocking=False
+                )
+            if all(len(os.listdir(f"{output_dir_path}/{gpu_id}/")) > 0 for gpu_id in self.gpu_ids):
+                break
+
+            print(f"Docking attempt #{attempt + 1} failed on GPU {self.gpu_ids[i]}.")
 
         # Move files from temporary to proper directory (or delete if redoing calculation)
         for gpu_id in self.gpu_ids:

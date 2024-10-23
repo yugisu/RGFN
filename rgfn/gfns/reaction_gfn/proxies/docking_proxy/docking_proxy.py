@@ -148,6 +148,7 @@ class DockingMoleculeProxy(CachedProxyBase[ReactionState]):
             print_msgs=self.print_msgs,
             print_vina_output=False,
             gpu_ids=list(range(self.n_gpu)),
+            docking_attempts=self.docking_attempts,
             additional_vina_args={
                 "thread": self.exhaustiveness,
                 "opencl_binary_path": vina_fullpath,
@@ -175,13 +176,19 @@ class DockingMoleculeProxy(CachedProxyBase[ReactionState]):
         smiles = [state.molecule.smiles for state in states]
         scores = []
         for chunk in _chunks(smiles, self.batch_size):
-            scores += self.dock_batch_qv2gpu(chunk)
+            scores_chunk, docked_pdbqts = self.dock_batch_qv2gpu(chunk)
+            if scores_chunk is not None:
+                scores_chunk = [self.failed_score if s is None else s for s in scores_chunk]
+                docked_pdbqts = ["" if p is None else p for p in docked_pdbqts]
+                scores += scores_chunk
+            else:
+                scores += [self.failed_score] * len(chunk)
 
         # scores prior to this point are negative
         scores = [np.clip(-x / self.norm, a_min=0, a_max=np.inf) for x in scores]
         return scores
 
-    def _docking_attempt(self, smiles, n):
+    def dock_batch_qv2gpu(self, smiles):
         """
         Uses customized QuickVina2-GPU (Tang et al.) implementation to
         calculate docking score against target of choice.
@@ -190,11 +197,7 @@ class DockingMoleculeProxy(CachedProxyBase[ReactionState]):
             score calculation) returns self.failed_score for that molecule.
         """
 
-        try:
-            scores, docked_pdbqts = self.docking_module_gpu(smiles)
-        except Exception as e:
-            print(f"Failed score loading attempt #{n}: {e}")
-            scores, docked_pdbqts = None, None
+        scores, docked_pdbqts = self.docking_module_gpu(smiles)
 
         if self.n_conformers == 1 or (not scores or not docked_pdbqts):
             return scores, docked_pdbqts
@@ -230,11 +233,3 @@ class DockingMoleculeProxy(CachedProxyBase[ReactionState]):
                         all_best_poses.append(best_pair[1])
 
             return all_best_scores, all_best_poses
-
-    def dock_batch_qv2gpu(self, smiles):
-        for attempt in range(1, self.docking_attempts + 1):
-            scores, docked_pdbqts = self._docking_attempt(smiles, attempt)
-            if scores is not None:
-                scores = [self.failed_score if s is None else s for s in scores]
-                return scores
-        return [self.failed_score] * len(smiles)
