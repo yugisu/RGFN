@@ -21,12 +21,10 @@ pip install dgl==1.1.2 -f https://data.dgl.ai/wheels/torch-2.3/cpu/repo.html
 
 pip install -e .
 
+# Optional development tools:
 pip install pre-commit
 pre-commit install
 ```
-
-You also need to download the data
-from [google drive](https://drive.google.com/drive/folders/1h53J3XT_usqnR87JvxJfvF15BOyjp17k): into `data` directory.
 
 For convenience all experiments will be logged to `experiments` directory. If you want to store the experiments results
 on other partition, you can create a symlink to the desired location:
@@ -35,13 +33,8 @@ on other partition, you can create a symlink to the desired location:
 ln -s <your_path> experiments
 ```
 
-Similarly, if you are using the docking proxy, the default installation path points to `quickvina_dir`. To make this work with your Vina-GPU-2.1 installation path, you can create a symlink:
+<details><summary><h3 style="display:inline-block">(Optional) Setup Vina-GPU-2.1</h3></summary>
 
-```bash
-ln -s <your-Vina-GPU-2.1_installation_path> quickvina_dir
-```
-
-### Setup Vina-GPU-2.1
 Before following the instructions below, **please read these important notes**:
 1. The user-specified workspace directory must be a full path.
 2. The Vina-GPU-2.1 docking proxy requires a system-wide installation of CUDA to work on GPU (loaded by, e.g., `module load cuda/11.8`).
@@ -53,7 +46,15 @@ To set up QV2GPU for use in the QV2GPU rescoring proxy, run the following comman
 sh scripts/install_qv2gpu.sh <workspace_directory>
 ```
 
-### Setup Gnina
+The default installation path points to `quickvina_dir`. To make this work with your Vina-GPU-2.1 installation path, you can create a symlink:
+
+```bash
+ln -s <your-Vina-GPU-2.1_installation_path> quickvina_dir
+```
+
+</details>
+
+<details><summary><h3 style="display:inline-block">(Optional) Setup Gnina</h3></summary>
 
 To set up Gnina for use in the Gnina rescoring proxy, run the following command:
 
@@ -62,7 +63,9 @@ sh external/setup_gnina.sh
 ```
 **NOTE:** Gnina rescoring changes the range of rewards to (0, 1). Because of that, it will be necessary to adjust `Reward.beta` parameter when compared to standard docking. Assuming the default beta of 4 for docking scores, a reasonable value would be 48, the default beta for the senolytic proxy.
 
-### Setup REINVENT priors
+</details>
+
+<details><summary><h3 style="display:inline-block">(Optional) Setup REINVENT priors</h3></summary>
 
 To setup environment for REINVENT priors, run the following commands:
 
@@ -97,7 +100,9 @@ or with apt-get:
 sudo apt-get install libxrender1
 ```
 
-### Setup GNEprop proxies
+</details>
+
+<details><summary><h3 style="display:inline-block">(Optional) Setup GNEprop proxies</h3></summary>
 
 Note that GNEprop is part of a not-yet published project, and access to the code and the models is restricted. In particular, you will need an access to a private github repository for the instructions below to work.
 
@@ -118,6 +123,8 @@ You also need to download the models manually from [google drive](https://drive.
 
 Finally, note that GNEprop requires a system-wide installation of CUDA to work on GPU (loaded by, e.g., `module load cuda/11.8`).
 
+</details>
+
 ## Train
 
 To train the RGFN using sEH proxy, run:
@@ -129,7 +136,7 @@ python train.py --cfg configs/rgfn_seh_proxy.gin
 The script will dump the results under `experiments/rgfn_seh_proxy/<timestamp>` directory. Our code uses gin-config
 package that allows for lightweight models configuration along with dependency injection.
 
-## Project Structure
+<details><summary><h3 style="display:inline-block">Project Structure</h3></summary>
 
 ### API
 
@@ -168,6 +175,8 @@ proxy base class, random samplers, reward_prioritized buffer, etc.
 ### GFNs
 
 Under `rgfn.gfns`, the repository provides the implementation of the GFlowNets.
+
+</details>
 
 ## Citation
 
