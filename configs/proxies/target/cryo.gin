@@ -1,4 +1,0 @@
-proxy/gin.singleton.constructor = @CryoProxy
-train_proxy = @proxy/gin.singleton()
-valid_proxy = %train_proxy
-CryoProxy.checkpoint_path = "external/gneprop/models/cryo.ckpt"
