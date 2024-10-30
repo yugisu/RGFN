@@ -1,7 +1,13 @@
-# RGFN
+# RGFN: Reaction-GFlowNet
 
 Code for "RGFN: Synthesizable Molecular Generation Using GFlowNets" [[arXiv]](https://arxiv.org/abs/2406.08506).
 Repository based on [https://github.com/gmum/RetroGFN](https://github.com/gmum/RetroGFN).
+
+RGFN is a generative model for designing diverse, high-reward small molecules. All produced molecules are highly likely to be synthesizable through the proposed synthesis pathways and cost ~100x less than those produced by competing methods. This is achieved by operating exclusively in the space of high-yield chemical reactions and low-cost reactants.
+
+![Graphical abstract](graphical_abstract.png)
+
+This repository allows users to reproduce experiments described in the associated paper and easily extend the framework to use custom oracles for optimization, e.g. by specifying a different protein target for the GPU-accelerated docking.
 
 ## Setup
 
