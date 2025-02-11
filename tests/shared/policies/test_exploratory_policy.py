@@ -1,11 +1,9 @@
-from typing import Dict, List
+from typing import List
 
 import pytest
-from torchtyping import TensorType
+from torch import Tensor
 
 from rgfn.api.policy_base import PolicyBase
-from rgfn.api.trajectories import Trajectories
-from rgfn.api.type_variables import TAction, TActionSpace, TState
 from rgfn.shared.policies.exploratory_policy import ExploratoryPolicy
 from rgfn.utils.helpers import seed_everything
 
@@ -19,10 +17,10 @@ class DeterministicPolicy(PolicyBase[int, int, int]):
 
     def compute_action_log_probs(
         self, states: List[int], action_spaces: List[int], actions: List[int]
-    ) -> TensorType[float]:
+    ) -> Tensor:
         pass
 
-    def compute_states_log_flow(self, states: List[int]) -> TensorType[float]:
+    def compute_states_log_flow(self, states: List[int]) -> Tensor:
         pass
 
     def set_device(self, device: str):
